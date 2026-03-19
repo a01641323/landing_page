@@ -1,0 +1,453 @@
+/* ============================================================
+   CSS CUSTOM PROPERTIES — per section
+   ============================================================ */
+:root {
+  /* Section 0: Él y ella */
+  --s0-bg:     #c0392b;
+  --s0-accent: #f1c40f;
+  --s0-btn-a:  #f39c12;
+  --s0-btn-b:  #27ae60;
+  --s0-btn-c:  #8e44ad;
+
+  /* Section 1: Residuos de una voz */
+  --s1-bg:     #1a6b5a;
+  --s1-accent: #48c9b0;
+  --s1-btn-a:  #e74c3c;
+  --s1-btn-b:  #48c9b0;
+  --s1-btn-c:  #f0f3f4;
+
+  /* Section 2: Príncipe turquesa */
+  --s2-bg:     #00d4d4;
+  --s2-accent: #1a2a3a;
+  --s2-btn-a:  #1a2a3a;
+  --s2-btn-b:  #d4a017;
+  --s2-btn-c:  #e0e0e0;
+
+  /* Section 3: Matías Hidalgo */
+  --s3-bg:     #000000;
+  --s3-accent: #b0b8c1;
+
+  --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   THREE.JS CANVAS
+   ============================================================ */
+#three-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ============================================================
+   PLATFORM SWITCHER
+   ============================================================ */
+#platform-switcher {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.4s ease, transform 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#platform-switcher:hover {
+  transform: scale(1.08);
+}
+
+#platform-switcher:active {
+  transform: scale(0.95);
+}
+
+#platform-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+  transition: opacity 0.2s ease;
+}
+
+/* ============================================================
+   SECTIONS WRAPPER — scroll-hijacked vertical stack
+   ============================================================ */
+#sections-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease-in-out;
+  will-change: transform;
+}
+
+/* ============================================================
+   INDIVIDUAL SECTIONS
+   ============================================================ */
+.section {
+  width: 100vw;
+  height: 100vh;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#section-0 { background-color: var(--s0-bg); }
+#section-1 { background-color: var(--s1-bg); }
+#section-2 { background-color: var(--s2-bg); }
+#section-3 { background-color: var(--s3-bg); }
+
+.section-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+/* Entry animation */
+.section-active .section-inner {
+  animation: section-enter 0.5s ease forwards;
+}
+
+@keyframes section-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   COVER IMAGES
+   ============================================================ */
+.cover-image {
+  /* Mobile-first */
+  width: 72vw;
+  height: 72vw;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  display: block;
+  user-select: none;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cover-image:active {
+  transform: scale(1.05);
+}
+
+/* Artist photo — circular crop  [FIX 3] */
+.cover-artist {
+  width: 62vw;
+  height: 62vw;
+  max-height: none;
+  max-width: none;
+  object-fit: cover;
+  object-position: center 10%;
+  border-radius: 50%;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+}
+
+/* Section 2 cover-wrapper (for scan-line overlay) */
+.cover-wrapper {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cover-wrapper .cover-image {
+  display: block;
+  border-radius: 0;
+}
+
+/* Scan lines — ::after on the wrapper */
+.cover-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 212, 212, 0.08) 3px,
+    rgba(0, 212, 212, 0.08) 4px
+  );
+  pointer-events: none;
+  animation: scan-drift 6s linear infinite;
+  z-index: 1;
+}
+
+@keyframes scan-drift {
+  from { background-position-y: 0; }
+  to   { background-position-y: 100px; }
+}
+
+/* Section 1: breathing animation */
+#cover-1 {
+  animation: breathe 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1.0); }
+  50%       { transform: scale(1.03); }
+}
+
+/* Section 3: artist section layout */
+.section-inner-artist {
+  justify-content: flex-start;
+  padding-top: 8vh;
+}
+
+/* ============================================================
+   TEXT BLOCKS
+   ============================================================ */
+.text-block {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  font-weight: 300;
+  line-height: 1.7;
+  text-align: center;
+  max-width: 560px;
+  padding: 0 1.25rem;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+#text-0 { color: var(--s0-accent); }
+#text-1 { color: var(--s1-accent); }
+#text-2 { color: var(--s2-accent); }
+
+/* Artist text — section 3 */
+.artist-text {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.artist-name {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* Silver shimmer gradient */
+  background: linear-gradient(
+    90deg,
+    #707880 0%,
+    #b0b8c1 20%,
+    #e8eaed 40%,
+    #ffffff 50%,
+    #e8eaed 60%,
+    #b0b8c1 80%,
+    #707880 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.artist-tagline {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  color: #6a737d;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  margin-top: 0.5rem;
+}
+
+/* ============================================================
+   FLOATING BUTTONS
+   ============================================================ */
+.floating-btn {
+  position: absolute;
+  cursor: pointer;
+  z-index: 2;
+  /* Mobile size */
+  width: 44px;
+  height: 44px;
+}
+
+/* Float animation — uses CSS vars per button */
+@keyframes float-path {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(var(--tx1), var(--ty1)); }
+  75%  { transform: translate(var(--tx2), var(--ty2)); }
+  100% { transform: translate(0, 0); }
+}
+
+.floating-btn {
+  animation: float-path var(--dur, 8s) ease-in-out var(--delay, 0s) infinite;
+}
+
+/* Circle */
+.btn-circle {
+  border-radius: 50%;
+  background: var(--color);
+  box-shadow: 0 0 18px 5px color-mix(in srgb, var(--color) 60%, transparent);
+}
+
+/* Triangle (clip-path, needs filter for glow) */
+.btn-triangle {
+  background: var(--color);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  filter: drop-shadow(0 0 8px var(--color));
+}
+
+/* Square */
+.btn-square {
+  background: var(--color);
+  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 0 18px 5px color-mix(in srgb, var(--color) 60%, transparent);
+}
+
+/* ─── Section 0 button positions & colors ─── */
+#btn-0-a { --color: var(--s0-btn-a); --dur: 6s;  --delay: 0s;    --tx1: 14px; --ty1: -18px; --tx2: -10px; --ty2: 14px;  left: 5%;   top: 8%; }
+#btn-0-b { --color: var(--s0-btn-b); --dur: 9s;  --delay: -3s;   --tx1: -18px; --ty1: 12px; --tx2: 14px; --ty2: -16px; right: 5%;  top: 48%; }
+#btn-0-c { --color: var(--s0-btn-c); --dur: 11s; --delay: -5s;   --tx1: 12px; --ty1: 16px; --tx2: -16px; --ty2: -12px; left: 5%;  bottom: 12%; }
+
+/* ─── Section 1 button positions & colors ─── */
+#btn-1-a { --color: var(--s1-btn-a); --dur: 7s;  --delay: 0s;    --tx1: -14px; --ty1: 18px; --tx2: 16px; --ty2: -14px; right: 5%;  top: 8%; }
+#btn-1-b { --color: var(--s1-btn-b); --dur: 10s; --delay: -3.5s; --tx1: 16px; --ty1: -14px; --tx2: -18px; --ty2: 12px; right: 5%;  bottom: 12%; }
+#btn-1-c { --color: var(--s1-btn-c); --dur: 8s;  --delay: -2s;   --tx1: 12px; --ty1: 14px; --tx2: -14px; --ty2: -10px; left: 5%;   top: 8%; }
+
+/* ─── Section 2 button positions & colors ─── */
+#btn-2-a { --color: var(--s2-btn-a); --dur: 6s;  --delay: 0s;    --tx1: 16px; --ty1: -12px; --tx2: -12px; --ty2: 16px; left: 5%;   top: 8%; }
+#btn-2-b { --color: var(--s2-btn-b); --dur: 8s;  --delay: -2.5s; --tx1: -12px; --ty1: 16px; --tx2: 18px; --ty2: -12px; right: 5%;  bottom: 14%; }
+#btn-2-c { --color: var(--s2-btn-c); --dur: 10s; --delay: -4s;   --tx1: 14px; --ty1: 12px; --tx2: -16px; --ty2: -14px; left: 5%;   top: 48%; }
+
+/* ============================================================
+   EXIT ANIMATIONS — section-specific
+   ============================================================ */
+
+/* Section 1: glitch shake on exit */
+#section-1.section-exiting #cover-1 {
+  animation: glitch-shake 0.65s ease-in forwards;
+}
+
+@keyframes glitch-shake {
+  0%   { transform: scale(1.0) translateX(0);    filter: none; }
+  8%   { transform: scale(1.0) translateX(-6px);  filter: hue-rotate(90deg); }
+  16%  { transform: scale(1.01) translateX(10px); filter: hue-rotate(-90deg) brightness(1.3); }
+  24%  { transform: scale(1.01) translateX(-14px); filter: hue-rotate(180deg); }
+  32%  { transform: scale(1.02) translateX(18px);  filter: brightness(1.8) hue-rotate(90deg); }
+  42%  { transform: scale(1.02) translateX(-22px); filter: hue-rotate(-90deg) brightness(0.6); }
+  52%  { transform: scale(1.03) translateX(28px);  filter: hue-rotate(270deg) brightness(2); }
+  62%  { transform: scale(1.02) translateX(-18px); filter: brightness(0.4); }
+  74%  { transform: scale(1.01) translateX(12px);  filter: hue-rotate(45deg); }
+  86%  { transform: scale(1.0) translateX(-6px);   filter: none; }
+  100% { transform: scale(1.0) translateX(0);      filter: none; }
+}
+
+/* Section 2: slide up + fade on exit  [FIX 2] */
+#section-2.section-exiting #cover-wrapper-2 {
+  animation: slide-up-fade 0.6s ease-in forwards;
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-40px); }
+}
+
+/* Accelerate scan lines on exit */
+#section-2.section-exiting .cover-wrapper::after {
+  animation-duration: 0.4s;
+}
+
+/* ============================================================
+   DESKTOP MEDIA QUERY (≥ 768px)
+   ============================================================ */
+@media (min-width: 768px) {
+  .cover-image {
+    width: auto;
+    height: auto;
+    max-height: 55vh;
+    max-width: 55vh;
+  }
+
+  .cover-artist {
+    width: 38vh;
+    height: 38vh;
+    max-height: none;
+    max-width: none;
+  }
+
+  .text-block {
+    font-size: 1rem;
+  }
+
+  .floating-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .btn-square {
+    width: 46px;
+    height: 46px;
+  }
+
+  #platform-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  #platform-switcher {
+    width: 56px;
+    height: 56px;
+    top: 20px;
+    right: 20px;
+  }
+}

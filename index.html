@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Matías Hidalgo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Shared Three.js canvas — fixed, pointer-events:none, z-index:10 -->
+  <canvas id="three-canvas"></canvas>
+
+  <!-- Platform switcher — fixed top-right, always visible -->
+  <div id="platform-switcher" role="button" aria-label="Cambiar plataforma" tabindex="0">
+    <img id="platform-logo" src="icons/spotify.png" alt="Spotify" />
+  </div>
+
+  <!-- All sections stacked vertically inside this wrapper -->
+  <div id="sections-wrapper">
+
+    <!-- Section 0: Él y ella -->
+    <section class="section section-active" id="section-0">
+      <div class="section-inner">
+        <img class="cover-image" id="cover-0" src="icons/elyella.png" alt="Él y ella" data-section="0" />
+        <div class="floating-btn btn-circle" id="btn-0-a" data-btn="0"></div>
+        <div class="floating-btn btn-circle" id="btn-0-b" data-btn="1"></div>
+        <div class="floating-btn btn-circle" id="btn-0-c" data-btn="2"></div>
+        <p class="text-block" id="text-0">
+          Cada melodía es un susurro del alma, un eco que resuena entre notas y silencios. La música nos encuentra cuando más la necesitamos, como un abrazo invisible que atraviesa el tiempo y el espacio, uniendo corazones que aún no se conocen pero ya se buscan.
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 1: Residuos de una voz -->
+    <section class="section" id="section-1">
+      <div class="section-inner">
+        <img class="cover-image" id="cover-1" src="icons/residuosdeunavoz.png" alt="Residuos de una voz" data-section="1" />
+        <div class="floating-btn btn-triangle" id="btn-1-a" data-btn="0"></div>
+        <div class="floating-btn btn-triangle" id="btn-1-b" data-btn="1"></div>
+        <div class="floating-btn btn-triangle" id="btn-1-c" data-btn="2"></div>
+        <p class="text-block" id="text-1">
+          En el silencio que deja la voz cuando calla, viven los recuerdos más honestos. No es el sonido lo que nos marca, sino su ausencia, ese vacío perfecto que lleva la forma exacta de todo lo que alguna vez fue dicho y ya no puede ser olvidado.
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 2: Príncipe turquesa -->
+    <section class="section" id="section-2">
+      <div class="section-inner">
+        <figure class="cover-wrapper" id="cover-wrapper-2">
+          <img class="cover-image" id="cover-2" src="icons/principeturquesa.png" alt="Príncipe turquesa" data-section="2" />
+        </figure>
+        <div class="floating-btn btn-square" id="btn-2-a" data-btn="0"></div>
+        <div class="floating-btn btn-square" id="btn-2-b" data-btn="1"></div>
+        <div class="floating-btn btn-square" id="btn-2-c" data-btn="2"></div>
+        <p class="text-block" id="text-2">
+          La corona no pesa si la llevas desde adentro. Hay tronos que se construyen con acordes, imperios que se levantan sobre ritmos, y reinos enteros que caben en una sola canción cuando fue escrita con verdad y habitada con fuego propio.
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 3: Matías Hidalgo -->
+    <section class="section" id="section-3">
+      <div class="section-inner section-inner-artist">
+        <img class="cover-image cover-artist" id="cover-3" src="icons/matiashidalgo.png" alt="Matías Hidalgo" data-section="3" />
+        <div class="artist-text" id="text-3">
+          <h1 class="artist-name">Matías Hidalgo</h1>
+          <p class="artist-tagline">Canciones que se quedan cuando todo lo demás se va.</p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
