@@ -164,13 +164,33 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
+// Rounded rectangle mask — shared by all section shaders
+// Returns >0 outside the rounded rect, <=0 inside
+const GLSL_ROUND = `
+float roundCorners(vec2 uv, float r) {
+  vec2 d = abs(uv - 0.5) - (0.5 - r);
+  return length(max(d, 0.0)) - r;
+}`;
+
+// Section 0 — Basic texture with rounded corners
+const FS_BASIC = `
+uniform sampler2D uTexture;
+varying vec2 vUv;
+${GLSL_ROUND}
+void main() {
+  if (roundCorners(vUv, 0.08) > 0.0) discard;
+  gl_FragColor = texture2D(uTexture, vUv);
+}`;
+
 // Section 1 — Glitch Signal
 const FS_GLITCH = `
 uniform float uTime;
 uniform sampler2D uTexture;
 uniform float uGlitch;
 varying vec2 vUv;
+${GLSL_ROUND}
 void main() {
+  if (roundCorners(vUv, 0.08) > 0.0) discard;
   vec2 uv = vUv;
   if (uGlitch > 0.5) {
     float shift = sin(uv.y * 50.0 + uTime * 20.0) * 0.015;
@@ -192,7 +212,9 @@ const FS_NEON = `
 uniform float uTime;
 uniform sampler2D uTexture;
 varying vec2 vUv;
+${GLSL_ROUND}
 void main() {
+  if (roundCorners(vUv, 0.08) > 0.0) discard;
   vec4 color = texture2D(uTexture, vUv);
   float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
   float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
@@ -232,7 +254,12 @@ function buildSection0(texture) {
   const sz = imgSize(0);
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.MeshBasicMaterial({ map: texture })
+    new THREE.ShaderMaterial({
+      vertexShader: VS,
+      fragmentShader: FS_BASIC,
+      uniforms: { uTexture: { value: texture } },
+      transparent: true,
+    })
   );
   scene.add(imgMesh);
 
@@ -276,7 +303,7 @@ function buildSection1(texture) {
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_GLITCH, uniforms: imgUniforms })
+    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_GLITCH, uniforms: imgUniforms, transparent: true })
   );
   scene.add(imgMesh);
 
@@ -329,7 +356,7 @@ function buildSection2(texture) {
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_NEON, uniforms: imgUniforms })
+    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_NEON, uniforms: imgUniforms, transparent: true })
   );
   scene.add(imgMesh);
 
