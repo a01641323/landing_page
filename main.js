@@ -173,14 +173,30 @@ float roundCornersAlpha(vec2 uv, float r) {
   return 1.0 - smoothstep(-fw, fw, dist);
 }`;
 
-// Section 0 — Basic texture with rounded corners
-const FS_BASIC = `
+// Section 0 — Ink bleed: idle plain, triggered: organic UV warp + soft color bleed
+const FS_INK_BLEED = `
+uniform float uTime;
 uniform sampler2D uTexture;
+uniform float uInkBleed;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  gl_FragColor = texture2D(uTexture, vUv);
-  gl_FragColor.a *= roundCornersAlpha(vUv, 0.02);
+  float alpha = roundCornersAlpha(vUv, 0.015);
+  vec2 uv = vUv;
+  if (uInkBleed > 0.5) {
+    float w1 = sin(uv.y * 9.0  + uTime * 2.3) * 0.014;
+    float w2 = sin(uv.x * 7.0  + uTime * 1.8) * 0.010;
+    float w3 = cos(uv.y * 13.0 - uv.x * 5.0 + uTime * 3.1) * 0.007;
+    uv.x += w1 + w3;
+    uv.y += w2 - w3 * 0.5;
+    float r = texture2D(uTexture, uv + vec2( 0.006,  0.002)).r;
+    float g = texture2D(uTexture, uv).g;
+    float b = texture2D(uTexture, uv + vec2(-0.005, -0.003)).b;
+    gl_FragColor = vec4(r, g, b, alpha);
+  } else {
+    gl_FragColor = texture2D(uTexture, uv);
+    gl_FragColor.a *= alpha;
+  }
 }`;
 
 // Section 1 — Glitch Signal
@@ -191,7 +207,7 @@ uniform float uGlitch;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.02);
+  float alpha = roundCornersAlpha(vUv, 0.015);
   vec2 uv = vUv;
   if (uGlitch > 0.5) {
     float shift = sin(uv.y * 50.0 + uTime * 20.0) * 0.015;
@@ -209,15 +225,22 @@ void main() {
   }
 }`;
 
-// Section 2 — Neon Pulse (turquoise selective)
-const FS_NEON = `
+// Section 2 — Pixel Breathe: idle neon pulse, triggered: pixelation breathes in/out
+const FS_PIXEL_BREATHE = `
 uniform float uTime;
 uniform sampler2D uTexture;
+uniform float uPixelBreathe;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.02);
-  vec4 color = texture2D(uTexture, vUv);
+  float alpha = roundCornersAlpha(vUv, 0.015);
+  vec2 uv = vUv;
+  if (uPixelBreathe > 0.5) {
+    float breathe = 0.5 + 0.5 * sin(uTime * 8.0);
+    float pixCount = mix(180.0, 28.0, breathe);
+    uv = floor(uv * pixCount) / pixCount;
+  }
+  vec4 color = texture2D(uTexture, uv);
   float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
   float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
   color.rgb += vec3(0.0, 0.5, 0.5) * pulse * isT;
@@ -255,21 +278,39 @@ function imgSize(idx) {
 function buildSection0(texture) {
   const scene = new THREE.Scene();
   const sz = imgSize(0);
+
+  const imgUniforms = {
+    uTime:     { value: 0 },
+    uTexture:  { value: texture },
+    uInkBleed: { value: 0.0 },
+  };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
     new THREE.ShaderMaterial({
       vertexShader: VS,
-      fragmentShader: FS_BASIC,
-      uniforms: { uTexture: { value: texture } },
+      fragmentShader: FS_INK_BLEED,
+      uniforms: imgUniforms,
       transparent: true,
       extensions: { derivatives: true },
     })
   );
   scene.add(imgMesh);
 
+  function scheduleInkBleed() {
+    setTimeout(() => {
+      imgUniforms.uInkBleed.value = 1.0;
+      setTimeout(() => {
+        imgUniforms.uInkBleed.value = 0.0;
+        scheduleInkBleed();
+      }, 600);
+    }, 6000 + Math.random() * 4000);
+  }
+  scheduleInkBleed();
+
   sections[0] = {
     scene, imgMesh,
     update(t) {
+      imgUniforms.uTime.value = t;
       imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
       // Sync depth shadow with bob — blur/opacity breathe with vertical position
@@ -355,14 +396,26 @@ function buildSection2(texture) {
   const sz = imgSize(2);
 
   const imgUniforms = {
-    uTime:    { value: 0 },
-    uTexture: { value: texture },
+    uTime:         { value: 0 },
+    uTexture:      { value: texture },
+    uPixelBreathe: { value: 0.0 },
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_NEON, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
+    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_PIXEL_BREATHE, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
   );
   scene.add(imgMesh);
+
+  function schedulePixelBreathe() {
+    setTimeout(() => {
+      imgUniforms.uPixelBreathe.value = 1.0;
+      setTimeout(() => {
+        imgUniforms.uPixelBreathe.value = 0.0;
+        schedulePixelBreathe();
+      }, 700);
+    }, 5000 + Math.random() * 4000);
+  }
+  schedulePixelBreathe();
 
   sections[2] = {
     scene, imgMesh,
@@ -395,21 +448,39 @@ function buildSection2(texture) {
 function buildSection3() {
   const scene = new THREE.Scene();
 
-  // 40 points in loose elliptical halo, centered at y=0 (screen center)
-  const count = 40;
-  const pos = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
-    const rx = 1.8 + (Math.random() - 0.5) * 0.5;
-    const ry = 1.2 + (Math.random() - 0.5) * 0.3;
-    pos[i * 3]     = Math.cos(angle) * rx;
-    pos[i * 3 + 1] = Math.sin(angle) * ry;
-    pos[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+  // 4-pointed star texture drawn on canvas
+  const starCanvas = document.createElement('canvas');
+  starCanvas.width = 64; starCanvas.height = 64;
+  const ctx = starCanvas.getContext('2d');
+  const cx = 32, cy = 32, r1 = 28, r2 = 8;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI / 4) - Math.PI / 2;
+    const r = i % 2 === 0 ? r1 : r2;
+    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
   }
+  ctx.closePath();
+  ctx.fillStyle = 'white';
+  ctx.fill();
+  const starTex = new THREE.CanvasTexture(starCanvas);
+
+  // 28 stars spread across the full screen, random base positions
+  const count = 28;
+  const base  = new Float32Array(count * 3);
+  const phase = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    base[i * 3]     = (Math.random() - 0.5) * 5.6;
+    base[i * 3 + 1] = (Math.random() - 0.5) * 4.8;
+    base[i * 3 + 2] = 0;
+    phase[i * 2]     = Math.random() * Math.PI * 2;
+    phase[i * 2 + 1] = Math.random() * Math.PI * 2;
+  }
+  const pos = base.slice();
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const starPoints = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: 0xffffff, size: 0.045, transparent: true, opacity: 0.6, sizeAttenuation: true,
+    color: 0xffffff, size: 0.055, transparent: true, opacity: 0.65,
+    sizeAttenuation: true, map: starTex, alphaTest: 0.05,
   }));
   scene.add(starPoints);
 
@@ -418,7 +489,13 @@ function buildSection3() {
   sections[3] = {
     scene, imgMesh: null,
     update(t) {
-      starPoints.rotation.y += 0.002;
+      // Very slow per-star drift
+      const arr = geo.attributes.position.array;
+      for (let i = 0; i < count; i++) {
+        arr[i * 3]     = base[i * 3]     + Math.sin(t * 0.12 + phase[i * 2])     * 0.10;
+        arr[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.09 + phase[i * 2 + 1]) * 0.08;
+      }
+      geo.attributes.position.needsUpdate = true;
       // Portrait bob + parallax combined — same formula as section 0
       if (portrait) {
         const bobVal = Math.sin(t * 0.6);
