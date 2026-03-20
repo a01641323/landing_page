@@ -110,6 +110,7 @@ function updatePlatformUI() {
   const p = platforms[activePlatformIndex];
   platformImg.src = p.icon;
   platformImg.alt = p.label;
+  platformImg.dataset.platform = p.id;
   const accent = sectionAccents[currentSection];
   switcher.style.boxShadow = `0 0 14px 4px ${accent}55, 0 0 4px 1px ${accent}99`;
 }
@@ -484,7 +485,7 @@ function buildSection3() {
   }));
   scene.add(starPoints);
 
-  const portrait = document.getElementById('cover-3');
+  const portrait = document.getElementById('portrait-frame');
 
   sections[3] = {
     scene, imgMesh: null,
@@ -510,15 +511,7 @@ function buildSection3() {
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(255,255,255,0.3)`;
 
-        // Two stage spotlights — independent rotation from source point
-        const spotL = document.getElementById('spotlight-3-l');
-        const spotR = document.getElementById('spotlight-3-r');
-        if (spotL && spotR) {
-          const swayL = Math.sin(t * 0.14) * 4.0 + Math.sin(t * 0.33) * 1.5;
-          const swayR = Math.sin(t * 0.10 + 2.1) * 4.0 + Math.sin(t * 0.27 + 1.3) * 1.5;
-          spotL.style.transform = `rotate(${swayL.toFixed(2)}deg)`;
-          spotR.style.transform = `rotate(${(-swayR).toFixed(2)}deg)`;
-        }
+        // Spotlight sway handled by CSS @keyframes sway-l / sway-r
       }
     },
   };
@@ -628,7 +621,7 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     if (fromIdx === 3) {
       s3Parallax.x = 0;
       s3Parallax.y = 0;
-      const portrait = document.getElementById('cover-3');
+      const portrait = document.getElementById('portrait-frame');
       if (portrait) { portrait.style.transform = ''; portrait.style.boxShadow = ''; }
     }
 

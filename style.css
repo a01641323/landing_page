@@ -79,6 +79,11 @@ body {
   transition: opacity 0.2s ease;
 }
 
+#platform-logo[data-platform="applemusic"] {
+  width: 36px;
+  height: 36px;
+}
+
 /* ============================================================
    SECTIONS WRAPPER
    ============================================================ */
@@ -145,22 +150,31 @@ body {
   pointer-events: auto;
 }
 
-/* Section 3 — circular portrait, fully visible, CSS only */
-#cover-3 {
-  opacity: 1;
+/* Section 3 — circular portrait container (JS applies transform + box-shadow) */
+#portrait-frame {
   width: 220px;
   height: 220px;
-  max-width: none;
-  max-height: none;
   border-radius: 50%;
-  object-fit: cover;
-  object-position: center 10%;
-  aspect-ratio: 1 / 1;
-  pointer-events: auto;
+  overflow: hidden;
+  flex-shrink: 0;
   /* Base shadow — JS overrides each frame */
   box-shadow:
     0 20px 55px rgba(255,255,255,0.55),
     0 8px 20px rgba(255,255,255,0.3);
+}
+
+/* Portrait img — zoomed 15% inside the circle container */
+#cover-3 {
+  opacity: 1;
+  width: 115%;
+  height: 115%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  object-position: center top;
+  margin-left: -7.5%;
+  margin-top: 0;
+  pointer-events: auto;
 }
 
 /* Section 2 cover-wrapper */
@@ -186,37 +200,45 @@ body {
   display: none;
 }
 
+/* Spotlight beams — narrow divs, origin 60vh below screen, CSS sway */
 #spotlight-3-l,
 #spotlight-3-r {
   position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
+  height: 160vh;
+  bottom: -60vh;          /* origin stays off-screen */
   pointer-events: none;
   z-index: 13;
   mix-blend-mode: screen;
   filter: blur(18px);
-  /* mask fades bottom ~25% to transparent — hides origin regardless of vh discrepancies */
-  -webkit-mask-image: linear-gradient(to bottom, white 65%, transparent 82%);
-  mask-image: linear-gradient(to bottom, white 65%, transparent 82%);
+  transform-origin: bottom center;
   background: linear-gradient(
     to top,
-    rgba(255,255,255,0.60) 0%,
-    rgba(255,255,255,0.36) 40%,
-    rgba(255,255,255,0.13) 70%,
-    transparent 100%
+    rgba(255,255,255,0.00) 0%,
+    rgba(255,255,255,0.07) 20%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.04) 80%,
+    rgba(255,255,255,0.00) 100%
   );
 }
 
-/* Cones aimed from bottom corners toward portrait (~50% x, ~38% y) */
 #spotlight-3-l {
-  clip-path: polygon(0% 100%, 22% 100%, 68% 0%, 42% 0%);
-  transform-origin: 11% 100%;
+  width: 150px;
+  left: calc(30% - 75px);
+  animation: sway-l 9s ease-in-out infinite;
 }
 #spotlight-3-r {
-  clip-path: polygon(78% 100%, 100% 100%, 58% 0%, 32% 0%);
-  transform-origin: 89% 100%;
+  width: 120px;
+  left: calc(70% - 60px);
+  animation: sway-r 11s ease-in-out infinite;
+}
+
+@keyframes sway-l {
+  0%, 100% { transform: rotate(-15deg); }
+  50%       { transform: rotate(-12deg); }
+}
+@keyframes sway-r {
+  0%, 100% { transform: rotate(18deg); }
+  50%       { transform: rotate(21deg); }
 }
 
 #cover-0-shadow,
@@ -325,66 +347,69 @@ body {
 }
 
 /* Triangles — Section 1
-   ::before = solid triangle fill (clip-path)
-   ::after  = blurred+scaled triangle behind fill → triangular glow
-   No box-shadow (would be rectangular) */
+   clip-path on ::before; filter:drop-shadow on parent follows rendered shape */
 .btn-triangle {
   width: 60px;
   height: 52px;
   background: transparent;
 }
 
-/* Solid fill on top */
 .btn-triangle::before {
   content: '';
   position: absolute;
   inset: 0;
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  z-index: 1;
-}
-
-/* Triangular glow: same shape, scaled up and blurred */
-.btn-triangle::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  z-index: 0;
-  transform: scale(2.2);
-  transform-origin: 50% 67%; /* approx. centroid of triangle */
-  filter: blur(10px);
-  opacity: 0.9;
 }
 
 #btn-1-a::before { background: #e74c3c; }
 #btn-1-b::before { background: #48c9b0; }
 #btn-1-c::before { background: #f5f5f0; }
 
-#btn-1-a::after { background: rgba(231,76,60,1); }
-#btn-1-b::after { background: rgba(72,201,176,1); }
-#btn-1-c::after { background: rgba(245,245,240,1); }
-
 #btn-1-a {
   animation: float-b 14s ease-in-out infinite;
   top: 13%;
   left: 5%;
+  filter:
+    drop-shadow(0 0 6px rgba(231,76,60,0.95))
+    drop-shadow(0 0 14px rgba(231,76,60,0.55))
+    drop-shadow(0 0 28px rgba(231,76,60,0.25));
 }
 #btn-1-b {
   animation: float-c 19s ease-in-out infinite;
   bottom: 15%;
   right: 7%;
+  filter:
+    drop-shadow(0 0 6px rgba(72,201,176,0.95))
+    drop-shadow(0 0 14px rgba(72,201,176,0.55))
+    drop-shadow(0 0 28px rgba(72,201,176,0.25));
 }
 #btn-1-c {
   animation: float-a 23s ease-in-out infinite;
   top: 21%;
   right: 9%;
+  filter:
+    drop-shadow(0 0 6px rgba(245,245,240,0.95))
+    drop-shadow(0 0 14px rgba(245,245,240,0.55))
+    drop-shadow(0 0 28px rgba(245,245,240,0.25));
 }
 
-#btn-1-a:hover::after,
-#btn-1-b:hover::after,
-#btn-1-c:hover::after {
-  opacity: 1;
-  transform: scale(3.2);
+#btn-1-a:hover {
+  filter:
+    drop-shadow(0 0 9px rgba(231,76,60,0.95))
+    drop-shadow(0 0 21px rgba(231,76,60,0.55))
+    drop-shadow(0 0 42px rgba(231,76,60,0.25));
+}
+#btn-1-b:hover {
+  filter:
+    drop-shadow(0 0 9px rgba(72,201,176,0.95))
+    drop-shadow(0 0 21px rgba(72,201,176,0.55))
+    drop-shadow(0 0 42px rgba(72,201,176,0.25));
+}
+#btn-1-c:hover {
+  filter:
+    drop-shadow(0 0 9px rgba(245,245,240,0.95))
+    drop-shadow(0 0 21px rgba(245,245,240,0.55))
+    drop-shadow(0 0 42px rgba(245,245,240,0.25));
 }
 
 /* Squares — Section 2 */
@@ -560,11 +585,15 @@ body {
     max-width: 55vh;
   }
 
-  #cover-3 {
+  #portrait-frame {
     width: 38vh;
     height: 38vh;
   }
 
+  #platform-logo[data-platform="applemusic"] {
+    width: 43px;
+    height: 43px;
+  }
 
   .text-block {
     font-size: 1rem;
