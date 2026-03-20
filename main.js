@@ -180,7 +180,7 @@ varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
   gl_FragColor = texture2D(uTexture, vUv);
-  gl_FragColor.a *= roundCornersAlpha(vUv, 0.025);
+  gl_FragColor.a *= roundCornersAlpha(vUv, 0.02);
 }`;
 
 // Section 1 — Glitch Signal
@@ -191,7 +191,7 @@ uniform float uGlitch;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.025);
+  float alpha = roundCornersAlpha(vUv, 0.02);
   vec2 uv = vUv;
   if (uGlitch > 0.5) {
     float shift = sin(uv.y * 50.0 + uTime * 20.0) * 0.015;
@@ -216,7 +216,7 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.025);
+  float alpha = roundCornersAlpha(vUv, 0.02);
   vec4 color = texture2D(uTexture, vUv);
   float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
   float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
@@ -427,12 +427,11 @@ function buildSection3() {
           `translate(${s3Parallax.x.toFixed(1)}px, ${(s3Parallax.y + pxBob).toFixed(1)}px)`;
         // Shadow breathes with bob
         const blur    = 40 + bobVal * 15;
-        const opacity = 0.65 - bobVal * 0.1;
+        const opacity = 0.55 - bobVal * 0.1;
         const offY    = 20 + bobVal * 8;
         portrait.style.boxShadow =
-          `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
-          ` 0 8px 20px rgba(0,0,0,0.45),` +
-          ` 0 0 40px rgba(180,180,180,0.15)`;
+          `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
+          ` 0 8px 20px rgba(255,255,255,0.3)`;
       }
     },
   };
