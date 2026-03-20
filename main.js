@@ -255,7 +255,7 @@ function buildSection0(texture) {
         const pxPerUnit = window.innerHeight / worldDims().h;
         const bobPx  = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
         const tiltDeg = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
-        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${tiltDeg.toFixed(3)}deg)`;
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
       }
     },
   };
@@ -293,7 +293,25 @@ function buildSection1(texture) {
 
   sections[1] = {
     scene, imgMesh,
-    update(t) { imgUniforms.uTime.value = t; },
+    update(t) {
+      imgUniforms.uTime.value = t;
+      imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
+      imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
+      const shadowEl = document.getElementById('cover-1-shadow');
+      if (shadowEl) {
+        const bobVal  = Math.sin(t * 0.6);
+        const blur    = 40 + bobVal * 15;
+        const opacity = 0.55 - bobVal * 0.1;
+        const offY    = 20 + bobVal * 8;
+        shadowEl.style.boxShadow =
+          `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
+          ` 0 8px 20px rgba(0,0,0,0.3)`;
+        const pxPerUnit  = window.innerHeight / worldDims().h;
+        const bobPx      = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const tiltDeg    = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+      }
+    },
   };
 }
 
@@ -315,21 +333,26 @@ function buildSection2(texture) {
   );
   scene.add(imgMesh);
 
-  // Lemniscate of Bernoulli phase — increments 0.004 per frame
-  let lemnT = 0;
-
   sections[2] = {
     scene, imgMesh,
     update(t) {
       imgUniforms.uTime.value = t;
-      // Extremely subtle figure-8 drift (A = 0.06 world units)
-      lemnT += 0.004;
-      const A    = 0.06;
-      const sinT = Math.sin(lemnT);
-      const denom = 1 + sinT * sinT;
-      imgMesh.position.x = A * Math.cos(lemnT) / denom;
-      imgMesh.position.y = A * sinT * Math.cos(lemnT) / denom;
-      // No rotation, no mouse parallax
+      imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
+      imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
+      const shadowEl = document.getElementById('cover-2-shadow');
+      if (shadowEl) {
+        const bobVal  = Math.sin(t * 0.6);
+        const blur    = 40 + bobVal * 15;
+        const opacity = 0.55 - bobVal * 0.1;
+        const offY    = 20 + bobVal * 8;
+        shadowEl.style.boxShadow =
+          `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
+          ` 0 8px 20px rgba(0,0,0,0.3)`;
+        const pxPerUnit  = window.innerHeight / worldDims().h;
+        const bobPx      = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const tiltDeg    = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+      }
     },
   };
 }
