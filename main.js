@@ -254,7 +254,7 @@ function buildSection0(texture) {
         // Follow the image's vertical bob
         const pxPerUnit = window.innerHeight / worldDims().h;
         const bobPx = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
-        shadowEl.style.transform = `translate(-50%, calc(-50% + ${bobPx.toFixed(1)}px))`;
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px))`;
       }
     },
   };
