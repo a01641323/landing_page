@@ -164,12 +164,13 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
-// Rounded rectangle mask — shared by all section shaders
-// Returns >0 outside the rounded rect, <=0 inside
+// Rounded rectangle mask — smooth alpha via fwidth() for anti-aliased edges
 const GLSL_ROUND = `
-float roundCorners(vec2 uv, float r) {
+float roundCornersAlpha(vec2 uv, float r) {
   vec2 d = abs(uv - 0.5) - (0.5 - r);
-  return length(max(d, 0.0)) - r;
+  float dist = length(max(d, 0.0)) - r;
+  float fw = fwidth(dist);
+  return 1.0 - smoothstep(-fw, fw, dist);
 }`;
 
 // Section 0 — Basic texture with rounded corners
@@ -178,8 +179,8 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  if (roundCorners(vUv, 0.01) > 0.0) discard;
   gl_FragColor = texture2D(uTexture, vUv);
+  gl_FragColor.a *= roundCornersAlpha(vUv, 0.08);
 }`;
 
 // Section 1 — Glitch Signal
@@ -190,20 +191,21 @@ uniform float uGlitch;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  if (roundCorners(vUv, 0.08) > 0.0) discard;
+  float alpha = roundCornersAlpha(vUv, 0.08);
   vec2 uv = vUv;
   if (uGlitch > 0.5) {
     float shift = sin(uv.y * 50.0 + uTime * 20.0) * 0.015;
     uv.x += shift;
     float b1 = step(0.996, fract(sin(uTime * 7.3 + floor(uv.y * 100.0)) * 43758.5));
     float b2 = step(0.994, fract(sin(uTime * 13.1 + floor(uv.y * 80.0)) * 17231.0));
-    if (b1 + b2 > 0.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+    if (b1 + b2 > 0.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, alpha); return; }
     float r = texture2D(uTexture, uv + vec2(0.008, 0.0)).r;
     float g = texture2D(uTexture, uv).g;
     float b = texture2D(uTexture, uv - vec2(0.008, 0.0)).b;
-    gl_FragColor = vec4(r, g, b, 1.0);
+    gl_FragColor = vec4(r, g, b, alpha);
   } else {
     gl_FragColor = texture2D(uTexture, uv);
+    gl_FragColor.a *= alpha;
   }
 }`;
 
@@ -214,11 +216,12 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  if (roundCorners(vUv, 0.08) > 0.0) discard;
+  float alpha = roundCornersAlpha(vUv, 0.08);
   vec4 color = texture2D(uTexture, vUv);
   float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
   float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
   color.rgb += vec3(0.0, 0.5, 0.5) * pulse * isT;
+  color.a *= alpha;
   gl_FragColor = color;
 }`;
 
@@ -259,6 +262,7 @@ function buildSection0(texture) {
       fragmentShader: FS_BASIC,
       uniforms: { uTexture: { value: texture } },
       transparent: true,
+      extensions: { derivatives: true },
     })
   );
   scene.add(imgMesh);
@@ -303,7 +307,7 @@ function buildSection1(texture) {
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_GLITCH, uniforms: imgUniforms, transparent: true })
+    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_GLITCH, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
   );
   scene.add(imgMesh);
 
@@ -356,7 +360,7 @@ function buildSection2(texture) {
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
-    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_NEON, uniforms: imgUniforms, transparent: true })
+    new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_NEON, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
   );
   scene.add(imgMesh);
 
