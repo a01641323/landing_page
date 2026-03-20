@@ -495,6 +495,12 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     currentSection = toIdx;
     updatePlatformUI();
 
+    // Swap active shadow
+    const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
+    const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
+    if (fromShadow) fromShadow.style.display = 'none';
+    if (toShadow)   toShadow.style.display   = 'block';
+
     // Reset portrait parallax/bob state when leaving section 3
     if (fromIdx === 3) {
       s3Parallax.x = 0;

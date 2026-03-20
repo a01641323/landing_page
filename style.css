@@ -180,6 +180,11 @@ body {
    SECTION 0 — DEPTH SHADOW (z-12: above canvas, below HTML wrapper)
    Transparent box — only the box-shadow is visible, animated by JS
    ============================================================ */
+#cover-1-shadow,
+#cover-2-shadow {
+  display: none;
+}
+
 #cover-0-shadow,
 #cover-1-shadow,
 #cover-2-shadow {
