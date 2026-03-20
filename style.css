@@ -192,16 +192,19 @@ body {
   left: 0;
   top: 0;
   width: 100vw;
-  height: 130vh;  /* 30vh extra below viewport — hides the beam origin */
+  height: 100vh;
   pointer-events: none;
   z-index: 13;
   mix-blend-mode: screen;
-  /* gradient stops shifted so the beam looks identical in the visible 100vh zone */
+  filter: blur(18px);
+  /* mask fades bottom ~25% to transparent — hides origin regardless of vh discrepancies */
+  -webkit-mask-image: linear-gradient(to bottom, white 65%, transparent 82%);
+  mask-image: linear-gradient(to bottom, white 65%, transparent 82%);
   background: linear-gradient(
     to top,
-    rgba(255,255,255,0.38) 23%,
-    rgba(255,255,255,0.22) 54%,
-    rgba(255,255,255,0.09) 77%,
+    rgba(255,255,255,0.60) 0%,
+    rgba(255,255,255,0.36) 40%,
+    rgba(255,255,255,0.13) 70%,
     transparent 100%
   );
 }
@@ -322,68 +325,66 @@ body {
 }
 
 /* Triangles — Section 1
-   clip-path va en ::before para que box-shadow del padre no se corte
-   con overflow:hidden del .section ancestro */
+   ::before = solid triangle fill (clip-path)
+   ::after  = blurred+scaled triangle behind fill → triangular glow
+   No box-shadow (would be rectangular) */
 .btn-triangle {
   width: 60px;
   height: 52px;
   background: transparent;
 }
+
+/* Solid fill on top */
 .btn-triangle::before {
   content: '';
   position: absolute;
   inset: 0;
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  z-index: 1;
+}
+
+/* Triangular glow: same shape, scaled up and blurred */
+.btn-triangle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  z-index: 0;
+  transform: scale(2.2);
+  transform-origin: 50% 67%; /* approx. centroid of triangle */
+  filter: blur(10px);
+  opacity: 0.9;
 }
 
 #btn-1-a::before { background: #e74c3c; }
 #btn-1-b::before { background: #48c9b0; }
 #btn-1-c::before { background: #f5f5f0; }
 
+#btn-1-a::after { background: rgba(231,76,60,1); }
+#btn-1-b::after { background: rgba(72,201,176,1); }
+#btn-1-c::after { background: rgba(245,245,240,1); }
+
 #btn-1-a {
   animation: float-b 14s ease-in-out infinite;
   top: 13%;
   left: 5%;
-  box-shadow:
-    0 0 8px 2px  rgba(231,76,60,0.9),
-    0 0 20px 6px rgba(231,76,60,0.5),
-    0 0 40px 12px rgba(231,76,60,0.2);
 }
 #btn-1-b {
   animation: float-c 19s ease-in-out infinite;
   bottom: 15%;
   right: 7%;
-  box-shadow:
-    0 0 8px 2px  rgba(72,201,176,0.9),
-    0 0 20px 6px rgba(72,201,176,0.5),
-    0 0 40px 12px rgba(72,201,176,0.2);
 }
 #btn-1-c {
   animation: float-a 23s ease-in-out infinite;
   top: 21%;
   right: 9%;
-  box-shadow:
-    0 0 8px 2px  rgba(245,245,240,0.9),
-    0 0 20px 6px rgba(245,245,240,0.5),
-    0 0 40px 12px rgba(245,245,240,0.2);
 }
-#btn-1-a:hover {
-  box-shadow:
-    0 0 8px 2px  rgba(231,76,60,0.9),
-    0 0 30px 9px rgba(231,76,60,0.75),
-    0 0 60px 18px rgba(231,76,60,0.35);
-}
-#btn-1-b:hover {
-  box-shadow:
-    0 0 8px 2px  rgba(72,201,176,0.9),
-    0 0 30px 9px rgba(72,201,176,0.75),
-    0 0 60px 18px rgba(72,201,176,0.35);
-}
-#btn-1-c:hover {
-  box-shadow:
-    0 0 8px 2px  rgba(245,245,240,0.9),
-    0 0 30px 9px rgba(245,245,240,0.75),
-    0 0 60px 18px rgba(245,245,240,0.35);
+
+#btn-1-a:hover::after,
+#btn-1-b:hover::after,
+#btn-1-c:hover::after {
+  opacity: 1;
+  transform: scale(3.2);
 }
 
 /* Squares — Section 2 */
