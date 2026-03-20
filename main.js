@@ -184,14 +184,14 @@ void main() {
   float alpha = roundCornersAlpha(vUv, 0.015);
   vec2 uv = vUv;
   if (uInkBleed > 0.5) {
-    float w1 = sin(uv.y * 9.0  + uTime * 2.3) * 0.014;
-    float w2 = sin(uv.x * 7.0  + uTime * 1.8) * 0.010;
-    float w3 = cos(uv.y * 13.0 - uv.x * 5.0 + uTime * 3.1) * 0.007;
+    float w1 = sin(uv.y * 9.0  + uTime * 2.3) * 0.006;
+    float w2 = sin(uv.x * 7.0  + uTime * 1.8) * 0.004;
+    float w3 = cos(uv.y * 13.0 - uv.x * 5.0 + uTime * 3.1) * 0.003;
     uv.x += w1 + w3;
     uv.y += w2 - w3 * 0.5;
-    float r = texture2D(uTexture, uv + vec2( 0.006,  0.002)).r;
+    float r = texture2D(uTexture, uv + vec2( 0.003,  0.001)).r;
     float g = texture2D(uTexture, uv).g;
-    float b = texture2D(uTexture, uv + vec2(-0.005, -0.003)).b;
+    float b = texture2D(uTexture, uv + vec2(-0.002, -0.001)).b;
     gl_FragColor = vec4(r, g, b, alpha);
   } else {
     gl_FragColor = texture2D(uTexture, uv);
@@ -236,8 +236,8 @@ void main() {
   float alpha = roundCornersAlpha(vUv, 0.015);
   vec2 uv = vUv;
   if (uPixelBreathe > 0.5) {
-    float breathe = 0.5 + 0.5 * sin(uTime * 8.0);
-    float pixCount = mix(180.0, 28.0, breathe);
+    float breathe = 0.5 + 0.5 * sin(uTime * 5.0);
+    float pixCount = mix(180.0, 80.0, breathe);
     uv = floor(uv * pixCount) / pixCount;
   }
   vec4 color = texture2D(uTexture, uv);
@@ -510,19 +510,19 @@ function buildSection3() {
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(255,255,255,0.3)`;
 
-        // Spotlight — orbits slowly over the portrait
+        // Two stage spotlights — left and right, rising from below screen
+        // mix-blend-mode: screen makes intersections naturally brighter
         const spotEl = document.getElementById('spotlight-3');
         if (spotEl) {
-          const rect = portrait.getBoundingClientRect();
-          spotEl.style.left   = rect.left + 'px';
-          spotEl.style.top    = rect.top  + 'px';
-          spotEl.style.width  = rect.width  + 'px';
-          spotEl.style.height = rect.height + 'px';
-          const sx = 38 + Math.sin(t * 0.22) * 18; // 20–56%
-          const sy = 30 + Math.cos(t * 0.17) * 13; // 17–43%
+          const lx  = 22 + Math.sin(t * 0.11) * 3;        // left beam  19–25%
+          const rx  = 78 - Math.sin(t * 0.11 + 1.4) * 3;  // right beam 75–81%
           spotEl.style.background =
-            `radial-gradient(circle at ${sx.toFixed(1)}% ${sy.toFixed(1)}%, ` +
-            `rgba(210,225,255,0.55) 0%, rgba(180,200,255,0.15) 40%, transparent 68%)`;
+            // Left — inner hot beam + outer halo
+            `radial-gradient(ellipse 11% 92% at ${lx.toFixed(1)}% 110%, rgba(255,255,255,0.42) 0%, transparent 100%),` +
+            `radial-gradient(ellipse 26% 88% at ${lx.toFixed(1)}% 114%, rgba(255,255,255,0.11) 0%, transparent 100%),` +
+            // Right — inner hot beam + outer halo
+            `radial-gradient(ellipse 11% 92% at ${rx.toFixed(1)}% 110%, rgba(255,255,255,0.42) 0%, transparent 100%),` +
+            `radial-gradient(ellipse 26% 88% at ${rx.toFixed(1)}% 114%, rgba(255,255,255,0.11) 0%, transparent 100%)`;
         }
       }
     },
