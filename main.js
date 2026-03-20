@@ -251,6 +251,10 @@ function buildSection0(texture) {
         shadowEl.style.boxShadow =
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(0,0,0,0.3)`;
+        // Follow the image's vertical bob
+        const pxPerUnit = window.innerHeight / worldDims().h;
+        const bobPx = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        shadowEl.style.transform = `translate(-50%, calc(-50% + ${bobPx.toFixed(1)}px))`;
       }
     },
   };
