@@ -198,22 +198,7 @@ body {
   }
 }
 
-/* Radial glow ellipse below portrait — connects portrait to beam */
-#portrait-radial-glow {
-  width: 300px;
-  height: 60px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center,
-    rgba(176,184,193,0.35) 0%,
-    rgba(176,184,193,0.15) 40%,
-    transparent 70%
-  );
-  filter: blur(8px);
-  pointer-events: none;
-  position: relative;
-  z-index: 29;
-  margin-top: -10px;
-}
+#portrait-radial-glow { display: none; }
 
 /* Portrait img — zoomed 15%, grayscale projected light */
 #cover-3 {

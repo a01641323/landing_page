@@ -569,13 +569,12 @@ function buildSection3() {
   // ── Portrait + text references ────────────────────────────
   const portrait   = document.getElementById('portrait-frame');
   const radialGlow = document.getElementById('portrait-radial-glow');
-  const artistText = document.getElementById('text-3');
 
   sections[3] = {
     scene, imgMesh: null, beamMesh,
     update(t) {
-      // ── Smooth dual-sine drift — no random jumps ──────────
-      beamAngle = Math.sin(t * 0.15) * 0.10 + Math.sin(t * 0.23) * 0.05;
+      // ── Slow dual-sine drift — very fluid, no jumps ───────
+      beamAngle = Math.sin(t * 0.07) * 0.06 + Math.sin(t * 0.11) * 0.03;
 
       // ── Diagonal base angle ────────────────────────────────
       // Target portrait at screen (50%, 35%). In Three.js UV (y=0 bottom, y=1 top):
@@ -614,7 +613,7 @@ function buildSection3() {
         const dUV = Math.sqrt((0.15 * aspect) ** 2 + 0.90 ** 2); // exact distance to portrait
 
         const portraitX = 0.65*W - Math.sin(totalAngle) * dUV * H;
-        const bobVal    = Math.sin(t * 0.5) * 3;
+        const bobVal    = Math.sin(t * 0.35) * 2;
         const portraitY = (1.25 - Math.cos(totalAngle) * dUV) * H + bobVal;
 
         portrait.style.position = 'fixed';
@@ -632,14 +631,7 @@ function buildSection3() {
             `translate(calc(${portraitX.toFixed(1)}px - 50%), calc(${(portraitY + 120).toFixed(1)}px - 50%))`;
         }
 
-        // Artist text: centered horizontally, tracks portrait vertically
-        if (artistText) {
-          artistText.style.position = 'fixed';
-          artistText.style.left     = '50%';
-          artistText.style.top      = '0';
-          artistText.style.transform =
-            `translate(-50%, ${(portraitY + 140).toFixed(1)}px)`;
-        }
+        // Text stays in CSS layout — no JS positioning
       }
     },
   };
