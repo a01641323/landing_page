@@ -180,7 +180,7 @@ varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
   gl_FragColor = texture2D(uTexture, vUv);
-  gl_FragColor.a *= roundCornersAlpha(vUv, 0.08);
+  gl_FragColor.a *= roundCornersAlpha(vUv, 0.025);
 }`;
 
 // Section 1 — Glitch Signal
@@ -191,7 +191,7 @@ uniform float uGlitch;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.08);
+  float alpha = roundCornersAlpha(vUv, 0.025);
   vec2 uv = vUv;
   if (uGlitch > 0.5) {
     float shift = sin(uv.y * 50.0 + uTime * 20.0) * 0.015;
@@ -216,7 +216,7 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  float alpha = roundCornersAlpha(vUv, 0.08);
+  float alpha = roundCornersAlpha(vUv, 0.025);
   vec4 color = texture2D(uTexture, vUv);
   float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
   float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
@@ -445,7 +445,7 @@ function buildSection3() {
 function initThreeJS() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isMobile });
-    renderer.setPixelRatio(1); // cap at 1 on all devices
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 0);
 
