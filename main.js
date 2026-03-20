@@ -178,7 +178,7 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 ${GLSL_ROUND}
 void main() {
-  if (roundCorners(vUv, 0.08) > 0.0) discard;
+  if (roundCorners(vUv, 0.01) > 0.0) discard;
   gl_FragColor = texture2D(uTexture, vUv);
 }`;
 
