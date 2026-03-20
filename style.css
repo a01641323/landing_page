@@ -180,8 +180,17 @@ body {
    Transparent box — only the box-shadow is visible, animated by JS
    ============================================================ */
 #cover-1-shadow,
-#cover-2-shadow {
+#cover-2-shadow,
+#spotlight-3 {
   display: none;
+}
+
+#spotlight-3 {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 13;
+  mix-blend-mode: soft-light;
 }
 
 #cover-0-shadow,

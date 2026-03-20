@@ -432,6 +432,21 @@ function buildSection3() {
         portrait.style.boxShadow =
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(255,255,255,0.3)`;
+
+        // Spotlight — orbits slowly over the portrait
+        const spotEl = document.getElementById('spotlight-3');
+        if (spotEl) {
+          const rect = portrait.getBoundingClientRect();
+          spotEl.style.left   = rect.left + 'px';
+          spotEl.style.top    = rect.top  + 'px';
+          spotEl.style.width  = rect.width  + 'px';
+          spotEl.style.height = rect.height + 'px';
+          const sx = 38 + Math.sin(t * 0.22) * 18; // 20–56%
+          const sy = 30 + Math.cos(t * 0.17) * 13; // 17–43%
+          spotEl.style.background =
+            `radial-gradient(circle at ${sx.toFixed(1)}% ${sy.toFixed(1)}%, ` +
+            `rgba(210,225,255,0.55) 0%, rgba(180,200,255,0.15) 40%, transparent 68%)`;
+        }
       }
     },
   };
@@ -530,6 +545,10 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
     if (fromShadow) fromShadow.style.display = 'none';
     if (toShadow)   toShadow.style.display   = 'block';
+
+    // Spotlight only on section 3
+    const spotEl = document.getElementById('spotlight-3');
+    if (spotEl) spotEl.style.display = toIdx === 3 ? 'block' : 'none';
 
     // Reset portrait parallax/bob state when leaving section 3
     if (fromIdx === 3) {
