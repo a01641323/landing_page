@@ -510,19 +510,14 @@ function buildSection3() {
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(255,255,255,0.3)`;
 
-        // Two stage spotlights — left and right, rising from below screen
-        // mix-blend-mode: screen makes intersections naturally brighter
-        const spotEl = document.getElementById('spotlight-3');
-        if (spotEl) {
-          const lx  = 22 + Math.sin(t * 0.11) * 3;        // left beam  19–25%
-          const rx  = 78 - Math.sin(t * 0.11 + 1.4) * 3;  // right beam 75–81%
-          spotEl.style.background =
-            // Left — inner hot beam + outer halo
-            `radial-gradient(ellipse 11% 92% at ${lx.toFixed(1)}% 110%, rgba(255,255,255,0.42) 0%, transparent 100%),` +
-            `radial-gradient(ellipse 26% 88% at ${lx.toFixed(1)}% 114%, rgba(255,255,255,0.11) 0%, transparent 100%),` +
-            // Right — inner hot beam + outer halo
-            `radial-gradient(ellipse 11% 92% at ${rx.toFixed(1)}% 110%, rgba(255,255,255,0.42) 0%, transparent 100%),` +
-            `radial-gradient(ellipse 26% 88% at ${rx.toFixed(1)}% 114%, rgba(255,255,255,0.11) 0%, transparent 100%)`;
+        // Two stage spotlights — independent rotation from source point
+        const spotL = document.getElementById('spotlight-3-l');
+        const spotR = document.getElementById('spotlight-3-r');
+        if (spotL && spotR) {
+          const swayL = Math.sin(t * 0.14) * 4.0 + Math.sin(t * 0.33) * 1.5;
+          const swayR = Math.sin(t * 0.10 + 2.1) * 4.0 + Math.sin(t * 0.27 + 1.3) * 1.5;
+          spotL.style.transform = `rotate(${swayL.toFixed(2)}deg)`;
+          spotR.style.transform = `rotate(${(-swayR).toFixed(2)}deg)`;
         }
       }
     },
@@ -623,9 +618,11 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     if (fromShadow) fromShadow.style.display = 'none';
     if (toShadow)   toShadow.style.display   = 'block';
 
-    // Spotlight only on section 3
-    const spotEl = document.getElementById('spotlight-3');
-    if (spotEl) spotEl.style.display = toIdx === 3 ? 'block' : 'none';
+    // Spotlights only on section 3
+    ['spotlight-3-l', 'spotlight-3-r'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = toIdx === 3 ? 'block' : 'none';
+    });
 
     // Reset portrait parallax/bob state when leaving section 3
     if (fromIdx === 3) {
