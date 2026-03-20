@@ -253,8 +253,9 @@ function buildSection0(texture) {
           ` 0 8px 20px rgba(0,0,0,0.3)`;
         // Follow the image's vertical bob
         const pxPerUnit = window.innerHeight / worldDims().h;
-        const bobPx = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
-        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px))`;
+        const bobPx  = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const tiltDeg = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${tiltDeg.toFixed(3)}deg)`;
       }
     },
   };
