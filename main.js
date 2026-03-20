@@ -446,26 +446,111 @@ function buildSection2(texture) {
 // SECTION 3 — MATÍAS HIDALGO: star ring only (portrait is CSS)
 // ═══════════════════════════════════════════════════════════
 
+// Bat-Signal beam — full-screen quad, mathematical beam shape in shader
+const FS_BEAM = `
+uniform float uTime;
+uniform float uBeamAngle;
+uniform vec2  uOrigin;    // beam origin in UV space (bottom-center)
+uniform float uAspect;    // viewport aspect ratio
+varying vec2 vUv;
+
+void main() {
+  // Correct for aspect ratio so beam looks circular, not stretched
+  vec2 uv = vUv;
+  vec2 toPixel = uv - uOrigin;
+  toPixel.x *= uAspect;
+
+  // Rotate coordinate space by beam angle
+  float cosA = cos(-uBeamAngle);
+  float sinA = sin(-uBeamAngle);
+  vec2 rotated = vec2(
+    toPixel.x * cosA - toPixel.y * sinA,
+    toPixel.x * sinA + toPixel.y * cosA
+  );
+
+  // Distance from beam center axis
+  float distFromAxis = abs(rotated.x);
+
+  // Beam width grows with distance from origin
+  float distFromOrigin = length(toPixel);
+  float beamWidth = distFromOrigin * 0.28 + 0.02;
+
+  // Only render in forward direction (above origin)
+  if (rotated.y < 0.0) discard;
+
+  // Soft falloff from axis — Gaussian-like
+  float axisAlpha = exp(-pow(distFromAxis / beamWidth, 2.5) * 3.0);
+
+  // Fade near origin (invisible at source) and at far edge — wide zone ensures
+  // origin is always off-screen on any device including mobile
+  float originFade = smoothstep(0.0, 0.28, distFromOrigin);
+  float farFade = smoothstep(1.2, 0.6, distFromOrigin);
+
+  // Volumetric dust: faint noise variation
+  float noise = fract(sin(dot(vUv * 80.0 + uTime * 0.2,
+                vec2(12.9898, 78.233))) * 43758.5);
+  float dustAlpha = noise * 0.04 * originFade;
+
+  float finalAlpha = (axisAlpha * originFade * farFade * 0.5) + dustAlpha;
+
+  vec3 color = vec3(0.80, 0.88, 0.96); // cold silver-blue
+  gl_FragColor = vec4(color, finalAlpha);
+}`;
+
+const VS_BEAM = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
 function buildSection3() {
   const scene = new THREE.Scene();
 
-  // 4-pointed star texture drawn on canvas
+  // ── Bat-Signal Beam — full-screen quad ────────────────────
+  const d = worldDims();
+  const beamGeo = new THREE.PlaneGeometry(d.w * 1.2, d.h * 1.2);
+  const beamUniforms = {
+    uTime:      { value: 0 },
+    uBeamAngle: { value: 0 },
+    uOrigin:    { value: new THREE.Vector2(0.65, -0.25) }, // bottom-right, well below screen
+    uAspect:    { value: window.innerWidth / window.innerHeight },
+  };
+  const beamMesh = new THREE.Mesh(beamGeo, new THREE.ShaderMaterial({
+    vertexShader: VS_BEAM,
+    fragmentShader: FS_BEAM,
+    uniforms: beamUniforms,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  }));
+  beamMesh.position.z = -0.5;
+  scene.add(beamMesh);
+
+  // ── Atmospheric drift state ──────────────────────────────
+  let beamAngle     = 0;
+  let driftToX      = 0;
+  let driftTimer    = 0;
+  let driftDuration = 3000 + Math.random() * 3000;
+  let lastT         = 0;
+
+  // ── Stars (reduced) ──────────────────────────────────────
   const starCanvas = document.createElement('canvas');
   starCanvas.width = 64; starCanvas.height = 64;
   const ctx = starCanvas.getContext('2d');
-  const cx = 32, cy = 32, r1 = 28, r2 = 8;
+  const cxS = 32, cyS = 32, r1 = 28, r2 = 8;
   ctx.beginPath();
   for (let i = 0; i < 8; i++) {
     const a = (i * Math.PI / 4) - Math.PI / 2;
     const r = i % 2 === 0 ? r1 : r2;
-    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    ctx.lineTo(cxS + r * Math.cos(a), cyS + r * Math.sin(a));
   }
   ctx.closePath();
   ctx.fillStyle = 'white';
   ctx.fill();
   const starTex = new THREE.CanvasTexture(starCanvas);
 
-  // 28 stars spread across the full screen, random base positions
   const count = 28;
   const base  = new Float32Array(count * 3);
   const phase = new Float32Array(count * 2);
@@ -480,38 +565,91 @@ function buildSection3() {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const starPoints = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: 0xffffff, size: 0.055, transparent: true, opacity: 0.65,
+    color: 0xffffff, size: 0.055, transparent: true, opacity: 0.4,
     sizeAttenuation: true, map: starTex, alphaTest: 0.05,
   }));
   scene.add(starPoints);
 
-  const portrait = document.getElementById('portrait-frame');
+  // ── Portrait + text references ────────────────────────────
+  const portrait   = document.getElementById('portrait-frame');
+  const radialGlow = document.getElementById('portrait-radial-glow');
+  const artistText = document.getElementById('text-3');
 
   sections[3] = {
-    scene, imgMesh: null,
+    scene, imgMesh: null, beamMesh,
     update(t) {
-      // Very slow per-star drift
+      // Delta time in ms
+      const deltaMs = (t - lastT) * 1000;
+      lastT = t;
+
+      // ── Atmospheric drift ──────────────────────────────
+      driftTimer += Math.abs(deltaMs);
+      if (driftTimer >= driftDuration) {
+        driftToX      = (Math.random() - 0.5) * 0.32; // max ±0.16 rad (~9°) — event searchlight feel
+        driftDuration = 3000 + Math.random() * 3000;
+        driftTimer    = 0;
+      }
+      beamAngle += (driftToX - beamAngle) * 0.012; // slightly faster lerp for wider range
+
+      // ── Diagonal base angle — makes beam point from right origin toward center ──
+      // Origin in UV: (0.65, -0.25). Target portrait in UV: (0.50, 0.35).
+      // In aspect-corrected UV space the required angle satisfies tan(θ) = 0.25*aspect.
+      const aspect    = window.innerWidth / window.innerHeight;
+      const baseAngle = Math.atan(0.25 * aspect);
+      const totalAngle = baseAngle + beamAngle; // beamAngle is the atmospheric drift
+
+      // ── Beam uniforms ──────────────────────────────────
+      beamUniforms.uTime.value      = t;
+      beamUniforms.uBeamAngle.value = totalAngle;
+      beamUniforms.uAspect.value    = aspect;
+
+      // Scale quad to cover viewport (avoid creating new geometry each frame)
+      const dims = worldDims();
+      beamMesh.scale.set(dims.w * 1.2 / (d.w * 1.2), dims.h * 1.2 / (d.h * 1.2), 1);
+
+      // ── Stars drift ────────────────────────────────────
       const arr = geo.attributes.position.array;
       for (let i = 0; i < count; i++) {
-        arr[i * 3]     = base[i * 3]     + Math.sin(t * 0.12 + phase[i * 2])     * 0.10;
-        arr[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.09 + phase[i * 2 + 1]) * 0.08;
+        arr[i * 3]     = base[i * 3]     + Math.sin(t * 0.08 + phase[i * 2])     * 0.10;
+        arr[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.06 + phase[i * 2 + 1]) * 0.08;
       }
       geo.attributes.position.needsUpdate = true;
-      // Portrait bob + parallax combined — same formula as section 0
-      if (portrait) {
-        const bobVal = Math.sin(t * 0.6);
-        const pxBob  = bobVal * 5;  // ±5px vertical bob
-        portrait.style.transform =
-          `translate(${s3Parallax.x.toFixed(1)}px, ${(s3Parallax.y + pxBob).toFixed(1)}px)`;
-        // Shadow breathes with bob
-        const blur    = 40 + bobVal * 15;
-        const opacity = 0.55 - bobVal * 0.1;
-        const offY    = 20 + bobVal * 8;
-        portrait.style.boxShadow =
-          `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(255,255,255,${opacity.toFixed(2)}),` +
-          ` 0 8px 20px rgba(255,255,255,0.3)`;
 
-        // Spotlight sway handled by CSS @keyframes sway-l / sway-r
+      // ── Portrait tracks beam tip using same aspect-corrected geometry as shader ──
+      // In aspect-corrected UV, beam direction is (-sin θ, cos θ).
+      // Converting to pixels: Δx_px = -sin(θ)*H, Δy_px = cos(θ)*H  (since W/aspect = H).
+      if (portrait) {
+        const H  = window.innerHeight;
+        const W  = window.innerWidth;
+        const dUV = 0.50; // distance along beam in aspect-corrected UV space
+
+        const portraitX = 0.65*W - Math.sin(totalAngle) * dUV * H;
+        const bobVal    = Math.sin(t * 0.5) * 4;
+        const portraitY = -0.25*H + Math.cos(totalAngle) * dUV * H + bobVal;
+
+        portrait.style.position = 'fixed';
+        portrait.style.left     = '0';
+        portrait.style.top      = '0';
+        portrait.style.transform =
+          `translate(calc(${portraitX.toFixed(1)}px - 50%), calc(${portraitY.toFixed(1)}px - 50%))`;
+
+        // Radial glow follows portrait
+        if (radialGlow) {
+          radialGlow.style.position = 'fixed';
+          radialGlow.style.left     = '0';
+          radialGlow.style.top      = '0';
+          radialGlow.style.transform =
+            `translate(calc(${portraitX.toFixed(1)}px - 50%), calc(${(portraitY + 120).toFixed(1)}px - 50%))`;
+        }
+
+        // Artist text: centered horizontally, tracks portrait vertically
+        if (artistText) {
+          artistText.style.position = 'fixed';
+          artistText.style.left     = '50%';
+          artistText.style.top      = '0';
+          artistText.style.transform =
+            `translate(-50%, ${(portraitY + 140).toFixed(1)}px)`;
+        }
       }
     },
   };
@@ -611,18 +749,31 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     if (fromShadow) fromShadow.style.display = 'none';
     if (toShadow)   toShadow.style.display   = 'block';
 
-    // Spotlights only on section 3
-    ['spotlight-3-l', 'spotlight-3-r'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = toIdx === 3 ? 'block' : 'none';
-    });
-
-    // Reset portrait parallax/bob state when leaving section 3
+    // Reset portrait/text fixed positioning when leaving section 3
     if (fromIdx === 3) {
       s3Parallax.x = 0;
       s3Parallax.y = 0;
       const portrait = document.getElementById('portrait-frame');
-      if (portrait) { portrait.style.transform = ''; portrait.style.boxShadow = ''; }
+      if (portrait) {
+        portrait.style.position  = '';
+        portrait.style.left      = '';
+        portrait.style.top       = '';
+        portrait.style.transform = '';
+      }
+      const radialGlow = document.getElementById('portrait-radial-glow');
+      if (radialGlow) {
+        radialGlow.style.position  = '';
+        radialGlow.style.left      = '';
+        radialGlow.style.top       = '';
+        radialGlow.style.transform = '';
+      }
+      const artistText = document.getElementById('text-3');
+      if (artistText) {
+        artistText.style.position  = '';
+        artistText.style.left      = '';
+        artistText.style.top       = '';
+        artistText.style.transform = '';
+      }
     }
 
     // Reset from section (now off-screen)

@@ -150,20 +150,72 @@ body {
   pointer-events: auto;
 }
 
-/* Section 3 — circular portrait container (JS applies transform + box-shadow) */
+/* Section 3 — circular portrait, projected light look */
 #portrait-frame {
   width: 220px;
   height: 220px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  /* Base shadow — JS overrides each frame */
+  z-index: 30;
+  opacity: 0.52;
+  mix-blend-mode: screen;
+  /* Feathered edge mask — center sharp, dissolves into beam at edges */
+  mask-image: radial-gradient(
+    circle,
+    rgba(0,0,0,1) 45%,
+    rgba(0,0,0,0.7) 62%,
+    rgba(0,0,0,0) 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    rgba(0,0,0,1) 45%,
+    rgba(0,0,0,0.7) 62%,
+    rgba(0,0,0,0) 78%
+  );
+  /* Reduced glow (30% less opacity) */
   box-shadow:
-    0 20px 55px rgba(255,255,255,0.55),
-    0 8px 20px rgba(255,255,255,0.3);
+    0 0 30px 8px rgba(176,184,193,0.42),
+    0 0 60px 20px rgba(176,184,193,0.21),
+    0 0 100px 40px rgba(176,184,193,0.1);
+  animation: portrait-glow-pulse 4s ease-in-out infinite;
 }
 
-/* Portrait img — zoomed 15% inside the circle container */
+/* (Portrait img styles merged into #cover-3 block below) */
+
+@keyframes portrait-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 30px 8px rgba(176,184,193,0.42),
+      0 0 60px 20px rgba(176,184,193,0.21),
+      0 0 100px 40px rgba(176,184,193,0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 40px 12px rgba(200,208,218,0.49),
+      0 0 80px 28px rgba(200,208,218,0.28),
+      0 0 120px 50px rgba(200,208,218,0.14);
+  }
+}
+
+/* Radial glow ellipse below portrait — connects portrait to beam */
+#portrait-radial-glow {
+  width: 300px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    rgba(176,184,193,0.35) 0%,
+    rgba(176,184,193,0.15) 40%,
+    transparent 70%
+  );
+  filter: blur(8px);
+  pointer-events: none;
+  position: relative;
+  z-index: 29;
+  margin-top: -10px;
+}
+
+/* Portrait img — zoomed 15%, grayscale projected light */
 #cover-3 {
   opacity: 1;
   width: 115%;
@@ -175,6 +227,13 @@ body {
   margin-left: -7.5%;
   margin-top: 0;
   pointer-events: auto;
+  filter:
+    grayscale(1)
+    brightness(1.4)
+    contrast(0.85)
+    saturate(0)
+    drop-shadow(0 0 24px rgba(180,210,240,0.7))
+    drop-shadow(0 0 60px rgba(180,210,240,0.3));
 }
 
 /* Section 2 cover-wrapper */
@@ -194,51 +253,8 @@ body {
    Transparent box — only the box-shadow is visible, animated by JS
    ============================================================ */
 #cover-1-shadow,
-#cover-2-shadow,
-#spotlight-3-l,
-#spotlight-3-r {
+#cover-2-shadow {
   display: none;
-}
-
-/* Spotlight beams — narrow divs, origin 60vh below screen, CSS sway */
-#spotlight-3-l,
-#spotlight-3-r {
-  position: fixed;
-  height: 160vh;
-  bottom: -60vh;          /* origin stays off-screen */
-  pointer-events: none;
-  z-index: 13;
-  mix-blend-mode: screen;
-  filter: blur(18px);
-  transform-origin: bottom center;
-  background: linear-gradient(
-    to top,
-    rgba(255,255,255,0.00) 0%,
-    rgba(255,255,255,0.07) 20%,
-    rgba(255,255,255,0.12) 50%,
-    rgba(255,255,255,0.04) 80%,
-    rgba(255,255,255,0.00) 100%
-  );
-}
-
-#spotlight-3-l {
-  width: 150px;
-  left: calc(30% - 75px);
-  animation: sway-l 9s ease-in-out infinite;
-}
-#spotlight-3-r {
-  width: 120px;
-  left: calc(70% - 60px);
-  animation: sway-r 11s ease-in-out infinite;
-}
-
-@keyframes sway-l {
-  0%, 100% { transform: rotate(-15deg); }
-  50%       { transform: rotate(-12deg); }
-}
-@keyframes sway-r {
-  0%, 100% { transform: rotate(18deg); }
-  50%       { transform: rotate(21deg); }
 }
 
 #cover-0-shadow,
@@ -519,15 +535,15 @@ body {
 .section-inner-artist {
   justify-content: center;
   padding-top: 0;
-  padding-bottom: 22vh; /* shifts content above screen center */
+  padding-bottom: 0;
   gap: 0;
 }
 
 .artist-text {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 24px;
   position: relative;
-  z-index: 20;
+  z-index: 30;
 }
 
 .artist-name {
@@ -588,6 +604,11 @@ body {
   #portrait-frame {
     width: 38vh;
     height: 38vh;
+  }
+
+  #portrait-radial-glow {
+    width: 400px;
+    height: 80px;
   }
 
   #platform-logo[data-platform="applemusic"] {
