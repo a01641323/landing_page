@@ -15,16 +15,19 @@
   <!-- Shared Three.js canvas — fixed, pointer-events:none, z-index:10 -->
   <canvas id="three-canvas"></canvas>
 
-  <!-- Platform switcher — fixed top-right, always visible -->
+  <!-- Section 0 depth shadow — fixed between canvas (z-10) and wrapper (z-20), animated by JS -->
+  <div id="cover-0-shadow"></div>
+
+  <!-- Platform switcher — fixed top-right, always visible, z-index:1000 -->
   <div id="platform-switcher" role="button" aria-label="Cambiar plataforma" tabindex="0">
     <img id="platform-logo" src="icons/spotify.png" alt="Spotify" />
   </div>
 
-  <!-- All sections stacked vertically inside this wrapper -->
+  <!-- All sections stacked vertically -->
   <div id="sections-wrapper">
 
     <!-- Section 0: Él y ella -->
-    <section class="section section-active" id="section-0">
+    <section class="section" id="section-0">
       <div class="section-inner">
         <img class="cover-image" id="cover-0" src="icons/elyella.png" alt="Él y ella" data-section="0" />
         <div class="floating-btn btn-circle" id="btn-0-a" data-btn="0"></div>
@@ -52,9 +55,7 @@
     <!-- Section 2: Príncipe turquesa -->
     <section class="section" id="section-2">
       <div class="section-inner">
-        <figure class="cover-wrapper" id="cover-wrapper-2">
-          <img class="cover-image" id="cover-2" src="icons/principeturquesa.png" alt="Príncipe turquesa" data-section="2" />
-        </figure>
+        <img class="cover-image" id="cover-2" src="icons/principeturquesa.png" alt="Príncipe turquesa" data-section="2" />
         <div class="floating-btn btn-square" id="btn-2-a" data-btn="0"></div>
         <div class="floating-btn btn-square" id="btn-2-b" data-btn="1"></div>
         <div class="floating-btn btn-square" id="btn-2-c" data-btn="2"></div>
@@ -68,6 +69,7 @@
     <section class="section" id="section-3">
       <div class="section-inner section-inner-artist">
         <img class="cover-image cover-artist" id="cover-3" src="icons/matiashidalgo.png" alt="Matías Hidalgo" data-section="3" />
+        <div class="moon-surface"></div>
         <div class="artist-text" id="text-3">
           <h1 class="artist-name">Matías Hidalgo</h1>
           <p class="artist-tagline">Canciones que se quedan cuando todo lo demás se va.</p>

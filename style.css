@@ -1,32 +1,11 @@
 /* ============================================================
-   CSS CUSTOM PROPERTIES — per section
+   CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
-  /* Section 0: Él y ella */
-  --s0-bg:     #c0392b;
   --s0-accent: #f1c40f;
-  --s0-btn-a:  #f39c12;
-  --s0-btn-b:  #27ae60;
-  --s0-btn-c:  #8e44ad;
-
-  /* Section 1: Residuos de una voz */
-  --s1-bg:     #1a6b5a;
   --s1-accent: #48c9b0;
-  --s1-btn-a:  #e74c3c;
-  --s1-btn-b:  #48c9b0;
-  --s1-btn-c:  #f0f3f4;
-
-  /* Section 2: Príncipe turquesa */
-  --s2-bg:     #1a2a3a;
   --s2-accent: #00d4d4;
-  --s2-btn-a:  #00d4d4;
-  --s2-btn-b:  #d4a017;
-  --s2-btn-c:  #e0e0e0;
-
-  /* Section 3: Matías Hidalgo */
-  --s3-bg:     #000000;
   --s3-accent: #b0b8c1;
-
   --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
 }
 
@@ -43,12 +22,14 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
 }
 
 body {
   font-family: var(--font-serif);
   -webkit-font-smoothing: antialiased;
+  /* Background set by JS on boot and on each transition */
+  background-color: #c0392b;
+  transition: background-color 500ms ease;
 }
 
 /* ============================================================
@@ -71,28 +52,24 @@ body {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 100;
+  z-index: 1000;
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: box-shadow 0.4s ease, transform 0.15s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: all;
 }
 
-#platform-switcher:hover {
-  transform: scale(1.08);
-}
-
-#platform-switcher:active {
-  transform: scale(0.95);
-}
+#platform-switcher:hover  { transform: scale(1.08); }
+#platform-switcher:active { transform: scale(0.95); }
 
 #platform-logo {
   width: 30px;
@@ -103,7 +80,7 @@ body {
 }
 
 /* ============================================================
-   SECTIONS WRAPPER — scroll-hijacked vertical stack
+   SECTIONS WRAPPER
    ============================================================ */
 #sections-wrapper {
   position: fixed;
@@ -113,12 +90,11 @@ body {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease-in-out;
-  will-change: transform;
+  /* No CSS transition — JS handles snap + tilt content */
 }
 
 /* ============================================================
-   INDIVIDUAL SECTIONS — backgrounds transparent (Three.js renders them)
+   SECTIONS — transparent (body background shows through)
    ============================================================ */
 .section {
   width: 100vw;
@@ -142,23 +118,14 @@ body {
   justify-content: center;
   gap: 1.5rem;
   padding: 1rem;
-}
-
-/* Entry animation */
-.section-active .section-inner {
-  animation: section-enter 0.5s ease forwards;
-}
-
-@keyframes section-enter {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  will-change: transform;
 }
 
 /* ============================================================
-   COVER IMAGES — invisible (Three.js renders them) but still in layout + clickable
+   COVER IMAGES — invisible for sections 0-2 (Three.js renders),
+   visible for section 3 (CSS circular portrait)
    ============================================================ */
 .cover-image {
-  /* Mobile-first */
   width: 72vw;
   height: 72vw;
   object-fit: cover;
@@ -166,26 +133,35 @@ body {
   cursor: pointer;
   display: block;
   user-select: none;
-  transition: transform 0.15s ease;
   flex-shrink: 0;
   opacity: 0;
+  pointer-events: none; /* Three.js images: clicks go to HTML overlay */
 }
 
-.cover-image:active {
-  transform: scale(1.05);
+/* Section 0-2 images keep pointer-events for click link opening */
+#cover-0,
+#cover-1,
+#cover-2 {
+  pointer-events: auto;
 }
 
-/* Artist photo — circular crop (kept for layout sizing) */
-.cover-artist {
-  width: 62vw;
-  height: 62vw;
-  max-height: none;
+/* Section 3 — circular portrait, fully visible, CSS only */
+#cover-3 {
+  opacity: 1;
+  width: 220px;
+  height: 220px;
   max-width: none;
+  max-height: none;
+  border-radius: 50%;
   object-fit: cover;
   object-position: center 10%;
-  border-radius: 50%;
-  overflow: hidden;
   aspect-ratio: 1 / 1;
+  pointer-events: auto;
+  /* Base shadow — JS overrides each frame */
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.7),
+    0 8px 20px rgba(0,0,0,0.5),
+    0 0 40px rgba(180,180,180,0.15);
 }
 
 /* Section 2 cover-wrapper */
@@ -195,29 +171,263 @@ body {
   flex-shrink: 0;
   margin: 0;
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
+}
+.cover-wrapper .cover-image { border-radius: 0; }
+.cover-wrapper::after { display: none; }
+
+/* ============================================================
+   SECTION 0 — DEPTH SHADOW (z-12: above canvas, below HTML wrapper)
+   Transparent box — only the box-shadow is visible, animated by JS
+   ============================================================ */
+#cover-0-shadow {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 72vw;
+  height: 72vw;
+  border-radius: 6px;
+  background: transparent;
+  z-index: 12;
+  pointer-events: none;
+  /* Base shadow — JS overrides blur/offset each frame */
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.55),
+    0 8px 20px rgba(0,0,0,0.3);
 }
 
-.cover-wrapper .cover-image {
-  display: block;
-  border-radius: 0;
-}
-
-/* Scan lines hidden — Three.js handles section 2 visuals */
-.cover-wrapper::after {
-  display: none;
-}
-
-/* Section 1: breathing animation removed — Three.js handles it */
-
-/* Section 3: artist section layout */
-.section-inner-artist {
-  justify-content: flex-start;
-  padding-top: 8vh;
+@media (min-width: 768px) {
+  #cover-0-shadow {
+    width: min(55vh, 55vw);
+    height: min(55vh, 55vw);
+  }
 }
 
 /* ============================================================
-   TEXT BLOCKS — z-index above Three.js canvas
+   MOON SURFACE (Section 3)
+   ============================================================ */
+.moon-surface {
+  width: 242px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #d0d0d0 0%, #888888 100%);
+  margin-top: -8px;
+  position: relative;
+  z-index: 21;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   FLOATING SHAPES — Lichtenstein style
+   ============================================================ */
+.floating-btn {
+  position: absolute;
+  cursor: pointer;
+  z-index: 25;
+  --s: 1; /* scale, updated on hover */
+}
+
+/* Hover: pause animation, scale up */
+.floating-btn:hover {
+  --s: 1.1;
+}
+
+/* Circles — Section 0 */
+.btn-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+}
+
+#btn-0-a {
+  background: #f39c12;
+  animation: float-a 12s ease-in-out infinite;
+  top: 11%;
+  left: 6%;
+  box-shadow:
+    0 0 8px 2px  rgba(243,156,18,0.9),
+    0 0 20px 6px rgba(243,156,18,0.5),
+    0 0 40px 12px rgba(243,156,18,0.2);
+}
+#btn-0-b {
+  background: #27ae60;
+  animation: float-b 17s ease-in-out infinite;
+  bottom: 13%;
+  right: 8%;
+  box-shadow:
+    0 0 8px 2px  rgba(39,174,96,0.9),
+    0 0 20px 6px rgba(39,174,96,0.5),
+    0 0 40px 12px rgba(39,174,96,0.2);
+}
+#btn-0-c {
+  background: #8e44ad;
+  animation: float-c 21s ease-in-out infinite;
+  top: 19%;
+  right: 10%;
+  box-shadow:
+    0 0 8px 2px  rgba(142,68,173,0.9),
+    0 0 20px 6px rgba(142,68,173,0.5),
+    0 0 40px 12px rgba(142,68,173,0.2);
+}
+#btn-0-a:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(243,156,18,0.9),
+    0 0 30px 9px rgba(243,156,18,0.75),
+    0 0 60px 18px rgba(243,156,18,0.35);
+}
+#btn-0-b:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(39,174,96,0.9),
+    0 0 30px 9px rgba(39,174,96,0.75),
+    0 0 60px 18px rgba(39,174,96,0.35);
+}
+#btn-0-c:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(142,68,173,0.9),
+    0 0 30px 9px rgba(142,68,173,0.75),
+    0 0 60px 18px rgba(142,68,173,0.35);
+}
+
+/* Triangles — Section 1 (clip-path: use drop-shadow for glow) */
+.btn-triangle {
+  width: 60px;
+  height: 52px;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+#btn-1-a {
+  background: #e74c3c;
+  filter:
+    drop-shadow(0 0 6px  rgba(231,76,60,0.9))
+    drop-shadow(0 0 16px rgba(231,76,60,0.5))
+    drop-shadow(0 0 32px rgba(231,76,60,0.2));
+  animation: float-b 14s ease-in-out infinite;
+  top: 13%;
+  left: 5%;
+}
+#btn-1-b {
+  background: #48c9b0;
+  filter:
+    drop-shadow(0 0 6px  rgba(72,201,176,0.9))
+    drop-shadow(0 0 16px rgba(72,201,176,0.5))
+    drop-shadow(0 0 32px rgba(72,201,176,0.2));
+  animation: float-c 19s ease-in-out infinite;
+  bottom: 15%;
+  right: 7%;
+}
+#btn-1-c {
+  background: #f5f5f0;
+  filter:
+    drop-shadow(0 0 6px  rgba(245,245,240,0.9))
+    drop-shadow(0 0 16px rgba(245,245,240,0.5))
+    drop-shadow(0 0 32px rgba(245,245,240,0.2));
+  animation: float-a 23s ease-in-out infinite;
+  top: 21%;
+  right: 9%;
+}
+#btn-1-a:hover {
+  filter:
+    drop-shadow(0 0 6px  rgba(231,76,60,0.9))
+    drop-shadow(0 0 24px rgba(231,76,60,0.75))
+    drop-shadow(0 0 48px rgba(231,76,60,0.35));
+}
+#btn-1-b:hover {
+  filter:
+    drop-shadow(0 0 6px  rgba(72,201,176,0.9))
+    drop-shadow(0 0 24px rgba(72,201,176,0.75))
+    drop-shadow(0 0 48px rgba(72,201,176,0.35));
+}
+#btn-1-c:hover {
+  filter:
+    drop-shadow(0 0 6px  rgba(245,245,240,0.9))
+    drop-shadow(0 0 24px rgba(245,245,240,0.75))
+    drop-shadow(0 0 48px rgba(245,245,240,0.35));
+}
+
+/* Squares — Section 2 */
+.btn-square {
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
+  border: none;
+}
+
+#btn-2-a {
+  background: #00d4d4;
+  animation: float-c 13s ease-in-out infinite;
+  top: 10%;
+  left: 7%;
+  box-shadow:
+    0 0 8px 2px  rgba(0,212,212,0.9),
+    0 0 20px 6px rgba(0,212,212,0.5),
+    0 0 40px 12px rgba(0,212,212,0.2);
+}
+#btn-2-b {
+  background: #d4a017;
+  animation: float-a 18s ease-in-out infinite;
+  bottom: 14%;
+  right: 9%;
+  box-shadow:
+    0 0 8px 2px  rgba(212,160,23,0.9),
+    0 0 20px 6px rgba(212,160,23,0.5),
+    0 0 40px 12px rgba(212,160,23,0.2);
+}
+#btn-2-c {
+  background: #e0e0e0;
+  animation: float-b 22s ease-in-out infinite;
+  top: 20%;
+  right: 11%;
+  box-shadow:
+    0 0 8px 2px  rgba(224,224,224,0.9),
+    0 0 20px 6px rgba(224,224,224,0.5),
+    0 0 40px 12px rgba(224,224,224,0.2);
+}
+#btn-2-a:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(0,212,212,0.9),
+    0 0 30px 9px rgba(0,212,212,0.75),
+    0 0 60px 18px rgba(0,212,212,0.35);
+}
+#btn-2-b:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(212,160,23,0.9),
+    0 0 30px 9px rgba(212,160,23,0.75),
+    0 0 60px 18px rgba(212,160,23,0.35);
+}
+#btn-2-c:hover {
+  box-shadow:
+    0 0 8px 2px  rgba(224,224,224,0.9),
+    0 0 30px 9px rgba(224,224,224,0.75),
+    0 0 60px 18px rgba(224,224,224,0.35);
+}
+
+/* Float keyframes — use CSS var(--s) for composable hover scale */
+@keyframes float-a {
+  0%   { transform: translate(0px,    0px)    scale(var(--s)); }
+  25%  { transform: translate(8px,  -12px)    scale(var(--s)); }
+  50%  { transform: translate(14px,   4px)    scale(var(--s)); }
+  75%  { transform: translate(-6px,  10px)    scale(var(--s)); }
+  100% { transform: translate(0px,    0px)    scale(var(--s)); }
+}
+@keyframes float-b {
+  0%   { transform: translate(0px,   0px)     scale(var(--s)); }
+  33%  { transform: translate(-10px, 8px)     scale(var(--s)); }
+  66%  { transform: translate(6px, -14px)     scale(var(--s)); }
+  100% { transform: translate(0px,   0px)     scale(var(--s)); }
+}
+@keyframes float-c {
+  0%   { transform: translate(0px,   0px)     scale(var(--s)); }
+  20%  { transform: translate(12px,  6px)     scale(var(--s)); }
+  40%  { transform: translate(4px,  -10px)    scale(var(--s)); }
+  60%  { transform: translate(-8px,  -6px)    scale(var(--s)); }
+  80%  { transform: translate(-4px,   8px)    scale(var(--s)); }
+  100% { transform: translate(0px,   0px)     scale(var(--s)); }
+}
+
+/* ============================================================
+   TEXT BLOCKS
    ============================================================ */
 .text-block {
   font-family: var(--font-serif);
@@ -237,10 +447,19 @@ body {
 #text-1 { color: var(--s1-accent); }
 #text-2 { color: var(--s2-accent); }
 
-/* Artist text — section 3 */
+/* ============================================================
+   SECTION 3 — ARTIST
+   ============================================================ */
+.section-inner-artist {
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 10vh; /* shifts content above screen center */
+  gap: 0;
+}
+
 .artist-text {
   text-align: center;
-  margin-top: 1.5rem;
+  margin-top: 12px; /* tight gap between moon rim and text */
   position: relative;
   z-index: 20;
 }
@@ -251,7 +470,6 @@ body {
   font-weight: 400;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  /* Silver shimmer gradient */
   background: linear-gradient(
     90deg,
     #707880 0%,
@@ -266,12 +484,12 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: shimmer 4s ease-in-out infinite;
+  animation: shimmer 3s linear infinite;
 }
 
 @keyframes shimmer {
-  0%   { background-position: 200% center; }
-  100% { background-position: -200% center; }
+  from { background-position: 200% center; }
+  to   { background-position: -200% center; }
 }
 
 .artist-tagline {
@@ -284,14 +502,14 @@ body {
 }
 
 /* ============================================================
-   FLOATING BUTTONS — hidden (Three.js shapes replace them)
+   MOBILE — tighter gap so image and text never collide
    ============================================================ */
-.floating-btn {
-  display: none;
+@media (max-width: 767px) {
+  .section-inner { gap: 16px; }
 }
 
 /* ============================================================
-   DESKTOP MEDIA QUERY (≥ 768px)
+   DESKTOP (≥ 768px)
    ============================================================ */
 @media (min-width: 768px) {
   .cover-image {
@@ -301,11 +519,13 @@ body {
     max-width: 55vh;
   }
 
-  .cover-artist {
+  #cover-3 {
     width: 38vh;
     height: 38vh;
-    max-height: none;
-    max-width: none;
+  }
+
+  .moon-surface {
+    width: calc(38vh * 1.1);
   }
 
   .text-block {
