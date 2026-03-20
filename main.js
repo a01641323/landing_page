@@ -528,12 +528,8 @@ function buildSection3() {
   beamMesh.position.z = -0.5;
   scene.add(beamMesh);
 
-  // ── Atmospheric drift state ──────────────────────────────
-  let beamAngle     = 0;
-  let driftToX      = 0;
-  let driftTimer    = 0;
-  let driftDuration = 3000 + Math.random() * 3000;
-  let lastT         = 0;
+  // ── Beam drift (dual-sine — no random jumps, always smooth) ──
+  let beamAngle = 0;
 
   // ── Stars (reduced) ──────────────────────────────────────
   const starCanvas = document.createElement('canvas');
@@ -578,32 +574,24 @@ function buildSection3() {
   sections[3] = {
     scene, imgMesh: null, beamMesh,
     update(t) {
-      // Delta time in ms
-      const deltaMs = (t - lastT) * 1000;
-      lastT = t;
+      // ── Smooth dual-sine drift — no random jumps ──────────
+      beamAngle = Math.sin(t * 0.15) * 0.10 + Math.sin(t * 0.23) * 0.05;
 
-      // ── Atmospheric drift ──────────────────────────────
-      driftTimer += Math.abs(deltaMs);
-      if (driftTimer >= driftDuration) {
-        driftToX      = (Math.random() - 0.5) * 0.32; // max ±0.16 rad (~9°) — event searchlight feel
-        driftDuration = 3000 + Math.random() * 3000;
-        driftTimer    = 0;
-      }
-      beamAngle += (driftToX - beamAngle) * 0.012; // slightly faster lerp for wider range
-
-      // ── Diagonal base angle — makes beam point from right origin toward center ──
-      // Origin in UV: (0.65, -0.25). Target portrait in UV: (0.50, 0.35).
-      // In aspect-corrected UV space the required angle satisfies tan(θ) = 0.25*aspect.
-      const aspect    = window.innerWidth / window.innerHeight;
-      const baseAngle = Math.atan(0.25 * aspect);
-      const totalAngle = baseAngle + beamAngle; // beamAngle is the atmospheric drift
+      // ── Diagonal base angle ────────────────────────────────
+      // Target portrait at screen (50%, 35%). In Three.js UV (y=0 bottom, y=1 top):
+      //   portrait UV = (0.50, 0.65), origin UV = (0.65, -0.25)
+      //   toPixel = (-0.15, 0.90) in UV. After aspect correction: (-0.15*aspect, 0.90).
+      //   Beam direction (-sinθ, cosθ) must be parallel → tanθ = 0.15*aspect/0.90 = aspect/6.
+      const aspect     = window.innerWidth / window.innerHeight;
+      const baseAngle  = Math.atan(aspect / 6);
+      const totalAngle = baseAngle + beamAngle;
 
       // ── Beam uniforms ──────────────────────────────────
       beamUniforms.uTime.value      = t;
       beamUniforms.uBeamAngle.value = totalAngle;
       beamUniforms.uAspect.value    = aspect;
 
-      // Scale quad to cover viewport (avoid creating new geometry each frame)
+      // Scale quad to cover viewport
       const dims = worldDims();
       beamMesh.scale.set(dims.w * 1.2 / (d.w * 1.2), dims.h * 1.2 / (d.h * 1.2), 1);
 
@@ -615,17 +603,19 @@ function buildSection3() {
       }
       geo.attributes.position.needsUpdate = true;
 
-      // ── Portrait tracks beam tip using same aspect-corrected geometry as shader ──
-      // In aspect-corrected UV, beam direction is (-sin θ, cos θ).
-      // Converting to pixels: Δx_px = -sin(θ)*H, Δy_px = cos(θ)*H  (since W/aspect = H).
+      // ── Portrait on beam axis — correct UV→screen conversion ──
+      // Three.js UV: y=0 bottom, y=1 top → screen_y = (1 - uv.y) * H
+      // Point on beam at aspect-corrected distance dUV from origin:
+      //   uv.x = 0.65 - sin(θ)*dUV/aspect  →  screen_x = 0.65W - sin(θ)*dUV*H
+      //   uv.y = -0.25 + cos(θ)*dUV        →  screen_y = (1.25 - cos(θ)*dUV)*H
       if (portrait) {
-        const H  = window.innerHeight;
-        const W  = window.innerWidth;
-        const dUV = 0.50; // distance along beam in aspect-corrected UV space
+        const H   = window.innerHeight;
+        const W   = window.innerWidth;
+        const dUV = Math.sqrt((0.15 * aspect) ** 2 + 0.90 ** 2); // exact distance to portrait
 
         const portraitX = 0.65*W - Math.sin(totalAngle) * dUV * H;
-        const bobVal    = Math.sin(t * 0.5) * 4;
-        const portraitY = -0.25*H + Math.cos(totalAngle) * dUV * H + bobVal;
+        const bobVal    = Math.sin(t * 0.5) * 3;
+        const portraitY = (1.25 - Math.cos(totalAngle) * dUV) * H + bobVal;
 
         portrait.style.position = 'fixed';
         portrait.style.left     = '0';
