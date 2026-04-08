@@ -296,6 +296,7 @@ function buildSection0(texture) {
     })
   );
   scene.add(imgMesh);
+  imgMesh.position.y = 0.18;
 
   function scheduleInkBleed() {
     setTimeout(() => {
@@ -312,7 +313,7 @@ function buildSection0(texture) {
     scene, imgMesh,
     update(t) {
       imgUniforms.uTime.value = t;
-      imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
+      imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
       // Sync depth shadow with bob — blur/opacity breathe with vertical position
       const shadowEl = document.getElementById('cover-0-shadow');
@@ -324,11 +325,11 @@ function buildSection0(texture) {
         shadowEl.style.boxShadow =
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(0,0,0,0.3)`;
-        // Follow the image's vertical bob
+        // Follow the image's vertical bob + static Y offset
         const pxPerUnit = window.innerHeight / worldDims().h;
-        const bobPx  = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const totalOffsetPx = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerUnit;
         const tiltDeg = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
-        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${totalOffsetPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
       }
     },
   };
@@ -352,6 +353,7 @@ function buildSection1(texture) {
     new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_GLITCH, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
   );
   scene.add(imgMesh);
+  imgMesh.position.y = 0.18;
 
   function scheduleGlitch() {
     setTimeout(() => {
@@ -368,7 +370,7 @@ function buildSection1(texture) {
     scene, imgMesh,
     update(t) {
       imgUniforms.uTime.value = t;
-      imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
+      imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
       const shadowEl = document.getElementById('cover-1-shadow');
       if (shadowEl) {
@@ -380,9 +382,9 @@ function buildSection1(texture) {
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(0,0,0,0.3)`;
         const pxPerUnit  = window.innerHeight / worldDims().h;
-        const bobPx      = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const totalOffsetPx = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerUnit;
         const tiltDeg    = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
-        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${totalOffsetPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
       }
     },
   };
@@ -406,6 +408,7 @@ function buildSection2(texture) {
     new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS_PIXEL_BREATHE, uniforms: imgUniforms, transparent: true, extensions: { derivatives: true } })
   );
   scene.add(imgMesh);
+  imgMesh.position.y = 0.18;
 
   function schedulePixelBreathe() {
     setTimeout(() => {
@@ -422,7 +425,7 @@ function buildSection2(texture) {
     scene, imgMesh,
     update(t) {
       imgUniforms.uTime.value = t;
-      imgMesh.position.y = Math.sin(t * 0.6) * 0.08;
+      imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
       const shadowEl = document.getElementById('cover-2-shadow');
       if (shadowEl) {
@@ -434,104 +437,22 @@ function buildSection2(texture) {
           `0 ${offY.toFixed(0)}px ${blur.toFixed(0)}px rgba(0,0,0,${opacity.toFixed(2)}),` +
           ` 0 8px 20px rgba(0,0,0,0.3)`;
         const pxPerUnit  = window.innerHeight / worldDims().h;
-        const bobPx      = Math.sin(t * 0.6) * 0.08 * pxPerUnit;
+        const totalOffsetPx = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerUnit;
         const tiltDeg    = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI);
-        shadowEl.style.transform = `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+        shadowEl.style.transform = `translate(-50%, calc(-50% - ${totalOffsetPx.toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
       }
     },
   };
 }
 
 // ═══════════════════════════════════════════════════════════
-// SECTION 3 — MATÍAS HIDALGO: star ring only (portrait is CSS)
+// SECTION 3 — MATÍAS HIDALGO: waveform + stars (portrait is CSS)
 // ═══════════════════════════════════════════════════════════
-
-// Bat-Signal beam — full-screen quad, mathematical beam shape in shader
-const FS_BEAM = `
-uniform float uTime;
-uniform float uBeamAngle;
-uniform vec2  uOrigin;    // beam origin in UV space (bottom-center)
-uniform float uAspect;    // viewport aspect ratio
-varying vec2 vUv;
-
-void main() {
-  // Correct for aspect ratio so beam looks circular, not stretched
-  vec2 uv = vUv;
-  vec2 toPixel = uv - uOrigin;
-  toPixel.x *= uAspect;
-
-  // Rotate coordinate space by beam angle
-  float cosA = cos(-uBeamAngle);
-  float sinA = sin(-uBeamAngle);
-  vec2 rotated = vec2(
-    toPixel.x * cosA - toPixel.y * sinA,
-    toPixel.x * sinA + toPixel.y * cosA
-  );
-
-  // Distance from beam center axis
-  float distFromAxis = abs(rotated.x);
-
-  // Beam width grows with distance from origin
-  float distFromOrigin = length(toPixel);
-  float beamWidth = distFromOrigin * 0.28 + 0.02;
-
-  // Only render in forward direction (above origin)
-  if (rotated.y < 0.0) discard;
-
-  // Soft falloff from axis — Gaussian-like
-  float axisAlpha = exp(-pow(distFromAxis / beamWidth, 2.5) * 3.0);
-
-  // Fade near origin (invisible at source) and at far edge — wide zone ensures
-  // origin is always off-screen on any device including mobile
-  float originFade = smoothstep(0.0, 0.28, distFromOrigin);
-  float farFade = smoothstep(1.2, 0.6, distFromOrigin);
-
-  // Volumetric dust: faint noise variation
-  float noise = fract(sin(dot(vUv * 80.0 + uTime * 0.2,
-                vec2(12.9898, 78.233))) * 43758.5);
-  float dustAlpha = noise * 0.04 * originFade;
-
-  float finalAlpha = (axisAlpha * originFade * farFade * 0.5) + dustAlpha;
-
-  vec3 color = vec3(0.80, 0.88, 0.96); // cold silver-blue
-  gl_FragColor = vec4(color, finalAlpha);
-}`;
-
-const VS_BEAM = `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`;
 
 function buildSection3() {
   const scene = new THREE.Scene();
 
-  // ── Bat-Signal Beam — full-screen quad ────────────────────
-  const d = worldDims();
-  const beamGeo = new THREE.PlaneGeometry(d.w * 1.2, d.h * 1.2);
-  const beamUniforms = {
-    uTime:      { value: 0 },
-    uBeamAngle: { value: 0 },
-    uOrigin:    { value: new THREE.Vector2(0.65, -0.25) }, // bottom-right, well below screen
-    uAspect:    { value: window.innerWidth / window.innerHeight },
-  };
-  const beamMesh = new THREE.Mesh(beamGeo, new THREE.ShaderMaterial({
-    vertexShader: VS_BEAM,
-    fragmentShader: FS_BEAM,
-    uniforms: beamUniforms,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  }));
-  beamMesh.position.z = -0.5;
-  scene.add(beamMesh);
-
-  // ── Beam drift (dual-sine — no random jumps, always smooth) ──
-  let beamAngle = 0;
-
-  // ── Stars (reduced) ──────────────────────────────────────
+  // ── Stars (60, small, slow) ──────────────────────────────
   const starCanvas = document.createElement('canvas');
   starCanvas.width = 64; starCanvas.height = 64;
   const ctx = starCanvas.getContext('2d');
@@ -547,7 +468,7 @@ function buildSection3() {
   ctx.fill();
   const starTex = new THREE.CanvasTexture(starCanvas);
 
-  const count = 28;
+  const count = 60;
   const base  = new Float32Array(count * 3);
   const phase = new Float32Array(count * 2);
   for (let i = 0; i < count; i++) {
@@ -561,77 +482,82 @@ function buildSection3() {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const starPoints = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: 0xffffff, size: 0.055, transparent: true, opacity: 0.4,
+    color: 0xffffff, size: 0.035, transparent: true, opacity: 0.25,
     sizeAttenuation: true, map: starTex, alphaTest: 0.05,
   }));
   scene.add(starPoints);
 
-  // ── Portrait + text references ────────────────────────────
-  const portrait   = document.getElementById('portrait-frame');
-  const radialGlow = document.getElementById('portrait-radial-glow');
+  // ── Background starfield — many small dim points ──────────
+  const bgCount = 180;
+  const bgBase  = new Float32Array(bgCount * 3);
+  const bgGeo   = new THREE.BufferGeometry();
+  for (let i = 0; i < bgCount; i++) {
+    bgBase[i * 3]     = (Math.random() - 0.5) * 7.0;
+    bgBase[i * 3 + 1] = (Math.random() - 0.5) * 6.0;
+    bgBase[i * 3 + 2] = -0.3;
+  }
+  bgGeo.setAttribute('position', new THREE.BufferAttribute(bgBase.slice(), 3));
+  const bgStarPoints = new THREE.Points(bgGeo, new THREE.PointsMaterial({
+    color: 0xaabbcc,
+    size: 0.018,
+    transparent: true,
+    opacity: 0.35,
+    sizeAttenuation: true,
+  }));
+  scene.add(bgStarPoints);
+
+  // ── Mid-layer stars — medium, slightly brighter ────────────
+  const midCount = 55;
+  const midBase  = new Float32Array(midCount * 3);
+  const midPhase = new Float32Array(midCount);
+  const midGeo   = new THREE.BufferGeometry();
+  for (let i = 0; i < midCount; i++) {
+    midBase[i * 3]     = (Math.random() - 0.5) * 6.0;
+    midBase[i * 3 + 1] = (Math.random() - 0.5) * 5.5;
+    midBase[i * 3 + 2] = -0.1;
+    midPhase[i] = Math.random() * Math.PI * 2;
+  }
+  midGeo.setAttribute('position', new THREE.BufferAttribute(midBase.slice(), 3));
+  const midStarPoints = new THREE.Points(midGeo, new THREE.PointsMaterial({
+    color: 0xddeeff,
+    size: 0.028,
+    transparent: true,
+    opacity: 0.55,
+    sizeAttenuation: true,
+  }));
+  scene.add(midStarPoints);
+
+  // ── Portrait reference ────────────────────────────────────
+  const portrait = document.getElementById('portrait-frame');
+  let s3EnteredAt = 0;
 
   sections[3] = {
-    scene, imgMesh: null, beamMesh,
+    scene, imgMesh: null,
+    onEnter() { s3EnteredAt = Date.now(); },
     update(t) {
-      // ── Slow dual-sine drift — very fluid, no jumps ───────
-      beamAngle = Math.sin(t * 0.07) * 0.06 + Math.sin(t * 0.11) * 0.03;
-
-      // ── Diagonal base angle ────────────────────────────────
-      // Target portrait at screen (50%, 35%). In Three.js UV (y=0 bottom, y=1 top):
-      //   portrait UV = (0.50, 0.65), origin UV = (0.65, -0.25)
-      //   toPixel = (-0.15, 0.90) in UV. After aspect correction: (-0.15*aspect, 0.90).
-      //   Beam direction (-sinθ, cosθ) must be parallel → tanθ = 0.15*aspect/0.90 = aspect/6.
-      const aspect     = window.innerWidth / window.innerHeight;
-      const baseAngle  = Math.atan(aspect / 6);
-      const totalAngle = baseAngle + beamAngle;
-
-      // ── Beam uniforms ──────────────────────────────────
-      beamUniforms.uTime.value      = t;
-      beamUniforms.uBeamAngle.value = totalAngle;
-      beamUniforms.uAspect.value    = aspect;
-
-      // Scale quad to cover viewport
-      const dims = worldDims();
-      beamMesh.scale.set(dims.w * 1.2 / (d.w * 1.2), dims.h * 1.2 / (d.h * 1.2), 1);
-
-      // ── Stars drift ────────────────────────────────────
+      // Stars drift — very slowly (0.5× multiplier)
       const arr = geo.attributes.position.array;
       for (let i = 0; i < count; i++) {
-        arr[i * 3]     = base[i * 3]     + Math.sin(t * 0.08 + phase[i * 2])     * 0.10;
-        arr[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.06 + phase[i * 2 + 1]) * 0.08;
+        arr[i * 3]     = base[i * 3]     + Math.sin(t * 0.04 + phase[i * 2])     * 0.10;
+        arr[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.03 + phase[i * 2 + 1]) * 0.08;
       }
       geo.attributes.position.needsUpdate = true;
 
-      // ── Portrait on beam axis — correct UV→screen conversion ──
-      // Three.js UV: y=0 bottom, y=1 top → screen_y = (1 - uv.y) * H
-      // Point on beam at aspect-corrected distance dUV from origin:
-      //   uv.x = 0.65 - sin(θ)*dUV/aspect  →  screen_x = 0.65W - sin(θ)*dUV*H
-      //   uv.y = -0.25 + cos(θ)*dUV        →  screen_y = (1.25 - cos(θ)*dUV)*H
-      if (portrait) {
-        const H   = window.innerHeight;
-        const W   = window.innerWidth;
-        const dUV = Math.sqrt((0.15 * aspect) ** 2 + 0.90 ** 2); // exact distance to portrait
+      // Mid-layer stars twinkle — opacity breathes slowly
+      const midArr = midGeo.attributes.position.array;
+      for (let i = 0; i < midCount; i++) {
+        midArr[i * 3]     = midBase[i * 3]     + Math.sin(t * 0.04 + midPhase[i]) * 0.06;
+        midArr[i * 3 + 1] = midBase[i * 3 + 1] + Math.cos(t * 0.03 + midPhase[i]) * 0.05;
+      }
+      midGeo.attributes.position.needsUpdate = true;
+      // Twinkle via opacity
+      midStarPoints.material.opacity = 0.4 + Math.sin(t * 0.7) * 0.15;
 
-        const portraitX = 0.65*W - Math.sin(totalAngle) * dUV * H;
-        const bobVal    = Math.sin(t * 0.35) * 2;
-        const portraitY = (1.25 - Math.cos(totalAngle) * dUV) * H + bobVal;
-
-        portrait.style.position = 'fixed';
-        portrait.style.left     = '0';
-        portrait.style.top      = '0';
-        portrait.style.transform =
-          `translate(calc(${portraitX.toFixed(1)}px - 50%), calc(${portraitY.toFixed(1)}px - 50%))`;
-
-        // Radial glow follows portrait
-        if (radialGlow) {
-          radialGlow.style.position = 'fixed';
-          radialGlow.style.left     = '0';
-          radialGlow.style.top      = '0';
-          radialGlow.style.transform =
-            `translate(calc(${portraitX.toFixed(1)}px - 50%), calc(${(portraitY + 120).toFixed(1)}px - 50%))`;
-        }
-
-        // Text stays in CSS layout — no JS positioning
+      // Portrait parallax
+      if (portrait && currentSection === 3) {
+        const px = -mouse.x * 5;
+        const py = -mouse.y * 5;
+        portrait.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px)`;
       }
     },
   };
@@ -702,10 +628,20 @@ function animate(now) {
 // CSS TILT TRANSITION — Star Wars style
 // ═══════════════════════════════════════════════════════════
 
+function runTaglineReveal() {
+  const tagline = document.getElementById('text-3')?.querySelector('.artist-tagline');
+  if (!tagline || !tagline.dataset.text) return;
+  const words = tagline.dataset.text.split(' ');
+  tagline.innerHTML = words.map((w, i) =>
+    `<span class="word-reveal" style="animation-delay:${0.3 + i * 0.08}s">${w}</span>`
+  ).join(' ');
+}
+
 function playTiltTransition(fromIdx, toIdx, direction) {
   if (isTransitioning) return;
   isTransitioning = true;
   lastScrollTime  = Date.now();
+  navigator.vibrate?.(35);
 
   const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
   const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
@@ -725,37 +661,39 @@ function playTiltTransition(fromIdx, toIdx, direction) {
     currentSection = toIdx;
     updatePlatformUI();
 
+    // Update section dots
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i === toIdx);
+    });
+    document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[toIdx]);
+
     // Swap active shadow
     const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
     const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
     if (fromShadow) fromShadow.style.display = 'none';
     if (toShadow)   toShadow.style.display   = 'block';
 
-    // Reset portrait/text fixed positioning when leaving section 3
+    // Reset parallax when leaving section 3
     if (fromIdx === 3) {
       s3Parallax.x = 0;
       s3Parallax.y = 0;
       const portrait = document.getElementById('portrait-frame');
       if (portrait) {
-        portrait.style.position  = '';
-        portrait.style.left      = '';
-        portrait.style.top       = '';
         portrait.style.transform = '';
+        portrait.classList.remove('portrait-entering');
       }
-      const radialGlow = document.getElementById('portrait-radial-glow');
-      if (radialGlow) {
-        radialGlow.style.position  = '';
-        radialGlow.style.left      = '';
-        radialGlow.style.top       = '';
-        radialGlow.style.transform = '';
+    }
+
+    // Section 3 enter: portrait animation + tagline word reveal
+    if (toIdx === 3) {
+      const portrait = document.getElementById('portrait-frame');
+      if (portrait) {
+        portrait.classList.remove('portrait-entering');
+        void portrait.offsetWidth; // force reflow to restart animation
+        portrait.classList.add('portrait-entering');
       }
-      const artistText = document.getElementById('text-3');
-      if (artistText) {
-        artistText.style.position  = '';
-        artistText.style.left      = '';
-        artistText.style.top       = '';
-        artistText.style.transform = '';
-      }
+      sections[3]?.onEnter();
+      runTaglineReveal();
     }
 
     // Reset from section (now off-screen)
@@ -816,11 +754,15 @@ window.addEventListener('keydown', e => {
   if (e.key === 'ArrowUp'   || e.key === 'PageUp')   { e.preventDefault(); handleScrollIntent(-1); }
 });
 
-let touchStartY = 0;
-window.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
-window.addEventListener('touchend',   e => {
+let touchStartY = 0, touchStartTime = 0;
+window.addEventListener('touchstart', e => {
+  touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
+}, { passive: true });
+window.addEventListener('touchend', e => {
   const delta = touchStartY - e.changedTouches[0].clientY;
-  if (Math.abs(delta) > 65) handleScrollIntent(delta);
+  const velocity = Math.abs(delta) / (Date.now() - touchStartTime);
+  if (Math.abs(delta) > 50 && velocity > 0.25) handleScrollIntent(delta);
 }, { passive: true });
 
 // ═══════════════════════════════════════════════════════════
@@ -840,11 +782,26 @@ document.addEventListener('visibilitychange', () => {
 // BOOT
 // ═══════════════════════════════════════════════════════════
 
+function initDots() {
+  const dotsEl = document.getElementById('section-dots');
+  dotsEl.style.setProperty('--accent', sectionAccents[0]);
+  document.querySelectorAll('.dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.dataset.idx, 10);
+      if (idx !== currentSection) {
+        playTiltTransition(currentSection, idx, idx > currentSection ? 1 : -1);
+      }
+    });
+  });
+}
+
 async function boot() {
   await parseLinks();
   document.body.style.backgroundColor = sectionBg[0];
   updatePlatformUI();
+  initDots();
   initThreeJS();
+  if (currentSection === 3) runTaglineReveal();
 }
 
 boot();

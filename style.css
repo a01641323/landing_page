@@ -6,7 +6,16 @@
   --s1-accent: #48c9b0;
   --s2-accent: #00d4d4;
   --s3-accent: #b0b8c1;
-  --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+
+  /* Section fonts */
+  --font-s0: 'Fraunces', Georgia, serif;
+  --font-s1: 'Syne Mono', 'Courier New', monospace;
+  --font-s2: 'Kalam', 'Comic Sans MS', cursive;
+  --font-s3-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-s3-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Keep this for any fallback reference — will not be used directly */
+  --font-serif: 'Fraunces', Georgia, serif;
 }
 
 /* ============================================================
@@ -25,9 +34,8 @@ html, body {
 }
 
 body {
-  font-family: var(--font-serif);
+  font-family: 'Epilogue', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Background set by JS on boot and on each transition */
   background-color: #c0392b;
   transition: background-color 500ms ease;
 }
@@ -150,75 +158,51 @@ body {
   pointer-events: auto;
 }
 
-/* Section 3 — circular portrait, projected light look */
+/* Section 3 — circular portrait */
 #portrait-frame {
-  width: 220px;
-  height: 220px;
+  width: min(52vw, 200px);
+  height: min(52vw, 200px);
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   z-index: 30;
-  opacity: 0.52;
-  mix-blend-mode: screen;
-  /* Feathered edge mask — center sharp, dissolves into beam at edges */
-  mask-image: radial-gradient(
-    circle,
-    rgba(0,0,0,1) 45%,
-    rgba(0,0,0,0.7) 62%,
-    rgba(0,0,0,0) 78%
-  );
-  -webkit-mask-image: radial-gradient(
-    circle,
-    rgba(0,0,0,1) 45%,
-    rgba(0,0,0,0.7) 62%,
-    rgba(0,0,0,0) 78%
-  );
-  /* Reduced glow (30% less opacity) */
+  opacity: 1;
+  mix-blend-mode: normal;
+  mask-image: none;
+  -webkit-mask-image: none;
   box-shadow:
-    0 0 30px 8px rgba(176,184,193,0.42),
-    0 0 60px 20px rgba(176,184,193,0.21),
-    0 0 100px 40px rgba(176,184,193,0.1);
+    0 0 0 2px rgba(176,184,193,0.3),
+    0 0 24px 6px rgba(176,184,193,0.2),
+    0 0 60px 20px rgba(176,184,193,0.08);
   animation: portrait-glow-pulse 4s ease-in-out infinite;
+  will-change: transform;
 }
-
-/* (Portrait img styles merged into #cover-3 block below) */
-
+#portrait-frame.portrait-entering {
+  animation: portrait-enter 0.8s ease forwards;
+}
+@keyframes portrait-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 @keyframes portrait-glow-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 30px 8px rgba(176,184,193,0.42),
-      0 0 60px 20px rgba(176,184,193,0.21),
-      0 0 100px 40px rgba(176,184,193,0.1);
-  }
-  50% {
-    box-shadow:
-      0 0 40px 12px rgba(200,208,218,0.49),
-      0 0 80px 28px rgba(200,208,218,0.28),
-      0 0 120px 50px rgba(200,208,218,0.14);
-  }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(176,184,193,0.3), 0 0 24px 6px rgba(176,184,193,0.2), 0 0 60px 20px rgba(176,184,193,0.08); }
+  50%       { box-shadow: 0 0 0 2px rgba(176,184,193,0.5), 0 0 32px 8px rgba(176,184,193,0.3), 0 0 80px 28px rgba(176,184,193,0.13); }
 }
 
 #portrait-radial-glow { display: none; }
 
-/* Portrait img — zoomed 15%, grayscale projected light */
+/* Portrait img — full color */
 #cover-3 {
   opacity: 1;
-  width: 115%;
-  height: 115%;
+  width: 100%;
+  height: 100%;
   max-width: none;
   max-height: none;
   object-fit: cover;
   object-position: center top;
-  margin-left: -7.5%;
-  margin-top: 0;
+  margin: 0;
+  filter: none;
   pointer-events: auto;
-  filter:
-    grayscale(1)
-    brightness(1.4)
-    contrast(0.85)
-    saturate(0)
-    drop-shadow(0 0 24px rgba(180,210,240,0.7))
-    drop-shadow(0 0 60px rgba(180,210,240,0.3));
 }
 
 /* Section 2 cover-wrapper */
@@ -510,32 +494,76 @@ body {
   z-index: 20;
 }
 
-#text-0 { color: var(--s0-accent); }
-#text-1 { color: var(--s1-accent); }
-#text-2 { color: var(--s2-accent); }
+#text-0 {
+  font-family: var(--font-s0);
+  font-size: clamp(0.82rem, 2.6vw, 1rem);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.85;
+  letter-spacing: 0.015em;
+  color: var(--s0-accent);
+  font-variation-settings: 'opsz' 12, 'wght' 300;
+}
+
+#text-1 {
+  font-family: var(--font-s1);
+  font-size: clamp(0.72rem, 2.2vw, 0.88rem);
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.9;
+  letter-spacing: 0.04em;
+  color: var(--s1-accent);
+}
+
+#text-2 {
+  font-family: var(--font-s2);
+  font-size: clamp(0.88rem, 2.8vw, 1.1rem);
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  color: var(--s2-accent);
+}
 
 /* ============================================================
    SECTION 3 — ARTIST
    ============================================================ */
 .section-inner-artist {
-  justify-content: center;
-  padding-top: 0;
+  justify-content: flex-start;
+  align-items: center;
+  padding-top: 10vh;
   padding-bottom: 0;
-  gap: 0;
+  gap: 20px;
+}
+.section-inner-artist::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(176,184,193,0.12) 0%, transparent 70%);
+  animation: aura-pulse 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes aura-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1.2; }
 }
 
 .artist-text {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 0;
   position: relative;
   z-index: 30;
+  padding: 0 1.5rem;
 }
 
 .artist-name {
-  font-family: var(--font-serif);
-  font-size: clamp(2rem, 8vw, 3.5rem);
-  font-weight: 400;
-  letter-spacing: 0.12em;
+  font-family: var(--font-s3-display);
+  font-size: clamp(2.2rem, 9vw, 4.2rem);
+  font-weight: 800;
+  font-style: normal;
+  font-variation-settings: 'opsz' 72, 'wdth' 100;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   background: linear-gradient(
     90deg,
@@ -559,13 +587,53 @@ body {
   to   { background-position: -200% center; }
 }
 
+@keyframes word-blur-in {
+  from { filter: blur(10px); opacity: 0; transform: translateY(6px); }
+  to   { filter: blur(0);    opacity: 1; transform: translateY(0); }
+}
+.word-reveal {
+  display: inline-block;
+  animation: word-blur-in 0.55s ease forwards;
+  opacity: 0;
+}
+
 .artist-tagline {
-  font-family: var(--font-serif);
-  font-size: 0.9rem;
-  color: #6a737d;
-  font-style: italic;
-  letter-spacing: 0.06em;
-  margin-top: 0.5rem;
+  font-family: var(--font-s3-body);
+  font-size: clamp(0.65rem, 2vw, 0.8rem);
+  font-weight: 200;
+  font-style: normal;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(176, 184, 193, 0.55);
+  margin-top: 0.9rem;
+  min-height: 1.4em;
+}
+
+/* ============================================================
+   SECTION DOTS NAVIGATION
+   ============================================================ */
+#section-dots {
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.dot.active {
+  background: var(--accent, white);
+  transform: scale(1.5);
+  box-shadow: 0 0 6px 2px var(--accent, white);
 }
 
 /* ============================================================
@@ -584,11 +652,6 @@ body {
     height: auto;
     max-height: 55vh;
     max-width: 55vh;
-  }
-
-  #portrait-frame {
-    width: 38vh;
-    height: 38vh;
   }
 
   #portrait-radial-glow {
