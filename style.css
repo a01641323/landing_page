@@ -436,6 +436,12 @@ body {
   transform-origin: center;
 }
 
+#btn-2-a, #btn-2-b, #btn-2-c {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
 #btn-2-a {
   color: #e0e0e0;
   animation: float-c 13s ease-in-out infinite;

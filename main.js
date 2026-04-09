@@ -335,6 +335,105 @@ function buildSection0(texture) {
   };
 }
 
+// ── Section 1 ripple — tuning parameters ─────────────────────
+const RIPPLE_SPEED    = 0.08;
+const RIPPLE_FREQ     = 9.0;
+const RIPPLE_DAMP     = 1.2;
+const RIPPLE_DECAY    = 0.18;
+const RIPPLE_INTERVAL = 2.2;
+const RIPPLE_COUNT    = 3;
+
+// ── Water color palette ───────────────────────────────────────
+const COLOR_DEEP      = [0.082, 0.380, 0.318];
+const COLOR_CREST     = [0.28,  0.79,  0.69];
+const SPEC_COLOR      = [0.55,  0.95,  0.85];
+const SPEC_STRENGTH   = 0.55;
+
+// Grosor de cada línea de onda — 0.02 muy fina, 0.06 gruesa
+const RIPPLE_LINE_WIDTH = 0.035;
+
+const VS_RIPPLE = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const FS_RIPPLE = `
+uniform float uTime;
+uniform vec2  uAspect;
+uniform vec2  uImpacts[${RIPPLE_COUNT}];
+uniform float uBirths[${RIPPLE_COUNT}];
+uniform float uSpeed;
+uniform float uFreq;
+uniform float uDamp;
+uniform float uDecay;
+uniform float uLineWidth;
+uniform vec3  uColorDeep;
+uniform vec3  uColorCrest;
+uniform vec3  uSpecColor;
+uniform float uSpecStrength;
+
+varying vec2 vUv;
+
+void main() {
+  // Corregir UV por aspect ratio para que los anillos sean circulares
+  vec2 uv = vUv;
+  float aspect = uAspect.x / uAspect.y;
+  uv.x *= aspect;
+
+  float totalLine  = 0.0;
+  float totalWeight = 0.0;
+
+  for (int i = 0; i < ${RIPPLE_COUNT}; i++) {
+    float age = uTime - uBirths[i];
+    if (age < 0.0) continue;
+
+    vec2 impact = uImpacts[i];
+    impact.x *= aspect;
+
+    float dist = length(uv - impact);
+
+    // Frente de onda: la onda no existe más allá de donde ha llegado
+    float waveFront = age * uSpeed;
+    if (dist > waveFront + 0.5) continue;
+
+    // Amortiguación espacial y temporal
+    float spatialDamp = exp(-dist * uDamp);
+    float timeDamp    = exp(-age  * uDecay);
+    float envelope    = spatialDamp * timeDamp;
+
+    // Fase de la onda en este punto
+    float phase = dist * uFreq - age * uSpeed * uFreq;
+
+    // fract() produce dientes de sierra [0,1]
+    // Centramos en 0.5 para tener el pico en el centro del diente
+    float f = fract(phase);
+
+    // smoothstep estrecho alrededor de 0.5 → línea nítida
+    float line = 1.0 - smoothstep(0.0, uLineWidth, abs(f - 0.5));
+
+    // Aplicar envelope para que las líneas se desvanezcan con distancia/edad
+    line *= envelope;
+
+    totalLine   += line;
+    totalWeight += envelope;
+  }
+
+  // Normalizar y saturar
+  float w = totalWeight > 0.0 ? totalLine / max(totalWeight, 0.001) : 0.0;
+  w = clamp(w, 0.0, 1.0);
+
+  // Color: fondo oscuro → crest en las líneas
+  vec3 color = mix(uColorDeep, uColorCrest, w);
+
+  // Specular: destello brillante en el pico de cada línea
+  float spec = pow(w, 3.0) * uSpecStrength;
+  color = mix(color, uSpecColor, spec);
+
+  gl_FragColor = vec4(color, 1.0);
+}`;
+
 // ═══════════════════════════════════════════════════════════
 // SECTION 1 — RESIDUOS DE UNA VOZ: glitch shader
 // ═══════════════════════════════════════════════════════════
@@ -342,6 +441,45 @@ function buildSection0(texture) {
 function buildSection1(texture) {
   const scene = new THREE.Scene();
   const sz = imgSize(1);
+
+  // ── Water ripple background ───────────────────────────────
+  const impactPositions = [];
+  const impactBirths    = [];
+  for (let i = 0; i < RIPPLE_COUNT; i++) {
+    impactPositions.push(0.5, 0.5);
+    impactBirths.push(-(i * RIPPLE_INTERVAL));
+  }
+
+  const rippleUniforms = {
+    uTime:         { value: 0 },
+    uAspect:       { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    uImpacts:      { value: impactPositions },
+    uBirths:       { value: impactBirths },
+    uSpeed:        { value: RIPPLE_SPEED },
+    uFreq:         { value: RIPPLE_FREQ },
+    uDamp:         { value: RIPPLE_DAMP },
+    uDecay:        { value: RIPPLE_DECAY },
+    uLineWidth:    { value: RIPPLE_LINE_WIDTH },
+    uColorDeep:    { value: new THREE.Vector3(...COLOR_DEEP) },
+    uColorCrest:   { value: new THREE.Vector3(...COLOR_CREST) },
+    uSpecColor:    { value: new THREE.Vector3(...SPEC_COLOR) },
+    uSpecStrength: { value: SPEC_STRENGTH },
+  };
+
+  const wd = worldDims();
+  const rippleMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(wd.w * 2.2, wd.h * 2.2),
+    new THREE.ShaderMaterial({
+      vertexShader:   VS_RIPPLE,
+      fragmentShader: FS_RIPPLE,
+      uniforms:       rippleUniforms,
+    })
+  );
+  rippleMesh.position.z = -1;
+  scene.add(rippleMesh);
+
+  let nextImpactIdx  = 0;
+  let lastImpactTime = 0;
 
   const imgUniforms = {
     uTime:    { value: 0 },
@@ -369,6 +507,28 @@ function buildSection1(texture) {
   sections[1] = {
     scene, imgMesh,
     update(t) {
+      // ── Water ripple update ───────────────────────────────
+      rippleUniforms.uTime.value = t;
+
+      const wdims = worldDims();
+      rippleMesh.scale.set(
+        wdims.w * 2.2 / (wd.w * 2.2),
+        wdims.h * 2.2 / (wd.h * 2.2),
+        1
+      );
+
+      rippleUniforms.uAspect.value.set(window.innerWidth, window.innerHeight);
+
+      if (t - lastImpactTime > RIPPLE_INTERVAL) {
+        impactPositions[nextImpactIdx * 2]     = 0.5;
+        impactPositions[nextImpactIdx * 2 + 1] = 0.5;
+        impactBirths[nextImpactIdx]             = t;
+        rippleUniforms.uImpacts.value = impactPositions;
+        rippleUniforms.uBirths.value  = impactBirths;
+        nextImpactIdx  = (nextImpactIdx + 1) % RIPPLE_COUNT;
+        lastImpactTime = t;
+      }
+
       imgUniforms.uTime.value = t;
       imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
