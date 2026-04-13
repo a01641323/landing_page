@@ -269,6 +269,12 @@ body {
   --s: 1; /* scale, updated on hover */
 }
 
+#btn-0-a, #btn-0-b, #btn-0-c,
+#btn-2-a, #btn-2-b, #btn-2-c, #btn-2-d, #btn-2-e {
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Hover: pause animation, scale up */
 .floating-btn:hover {
   --s: 1.1;
@@ -276,8 +282,8 @@ body {
 
 /* Circles — Section 0 */
 .btn-circle {
-  width: 56px;
-  height: 56px;
+  width:  clamp(44px, 14vmin, 100px);
+  height: clamp(44px, 14vmin, 100px);
   border-radius: 50%;
   border: none;
 }
@@ -436,55 +442,96 @@ body {
   transform-origin: center;
 }
 
-#btn-2-a, #btn-2-b, #btn-2-c {
-  width: 56px;
-  height: 56px;
+#btn-2-a, #btn-2-b, #btn-2-c, #btn-2-d, #btn-2-e {
   object-fit: contain;
 }
 
 #btn-2-a {
-  color: #e0e0e0;
-  animation: float-c 13s ease-in-out infinite;
+  width: clamp(160px, 52vmin, 280px); height: clamp(160px, 52vmin, 280px);
+  animation: float-2a 13s ease-in-out infinite;
   top: 9%;
   left: 11%;
   filter:
-    drop-shadow(0 0 6px rgba(224,224,224,0.95))
-    drop-shadow(0 0 14px rgba(224,224,224,0.55))
-    drop-shadow(0 0 28px rgba(224,224,224,0.25));
+    drop-shadow(0 0 2px rgba(224,224,224,1))
+    drop-shadow(0 0 5px rgba(224,224,224,0.8))
+    drop-shadow(0 0 10px rgba(224,224,224,0.4));
 }
 #btn-2-b {
-  color: #e0e0e0;
-  animation: float-a 18s ease-in-out infinite;
+  width: clamp(110px, 36vmin, 200px); height: clamp(110px, 36vmin, 200px);
+  animation: float-2b 18s ease-in-out infinite;
   bottom: 22%;
   right: 62%;
   filter:
-    drop-shadow(0 0 6px rgba(224,224,224,0.95))
-    drop-shadow(0 0 14px rgba(224,224,224,0.55))
-    drop-shadow(0 0 28px rgba(224,224,224,0.25));
+    drop-shadow(0 0 2px rgba(224,224,224,1))
+    drop-shadow(0 0 5px rgba(224,224,224,0.8))
+    drop-shadow(0 0 10px rgba(224,224,224,0.4));
 }
 #btn-2-c {
-  color: #e0e0e0;
-  animation: float-b 22s ease-in-out infinite;
+  width: clamp(210px, 67vmin, 340px); height: clamp(210px, 67vmin, 340px);
+  animation: float-2c 22s ease-in-out infinite;
   top: 19%;
   right: 16%;
   filter:
-    drop-shadow(0 0 6px rgba(224,224,224,0.95))
-    drop-shadow(0 0 14px rgba(224,224,224,0.55))
-    drop-shadow(0 0 28px rgba(224,224,224,0.25));
+    drop-shadow(0 0 2px rgba(224,224,224,1))
+    drop-shadow(0 0 5px rgba(224,224,224,0.8))
+    drop-shadow(0 0 10px rgba(224,224,224,0.4));
 }
-#btn-2-a:hover {
+#btn-2-d {
+  width: clamp(70px, 23vmin, 130px); height: clamp(70px, 23vmin, 130px);
+  animation: float-2d 16s ease-in-out infinite;
+  bottom: 12%;
+  right: 18%;
   filter:
-    drop-shadow(0 0 9px rgba(224,224,224,0.95))
-    drop-shadow(0 0 21px rgba(224,224,224,0.75))
-    drop-shadow(0 0 42px rgba(224,224,224,0.35));
+    drop-shadow(0 0 2px rgba(224,224,224,1))
+    drop-shadow(0 0 5px rgba(224,224,224,0.8))
+    drop-shadow(0 0 10px rgba(224,224,224,0.4));
 }
-#btn-2-b:hover {
+#btn-2-e {
+  width: clamp(140px, 44vmin, 240px); height: clamp(140px, 44vmin, 240px);
+  animation: float-2e 20s ease-in-out infinite;
+  bottom: 38%;
+  left: 58%;
   filter:
-    drop-shadow(0 0 9px rgba(224,224,224,0.95))
-    drop-shadow(0 0 21px rgba(224,224,224,0.75))
-    drop-shadow(0 0 42px rgba(224,224,224,0.35));
+    drop-shadow(0 0 2px rgba(224,224,224,1))
+    drop-shadow(0 0 5px rgba(224,224,224,0.8))
+    drop-shadow(0 0 10px rgba(224,224,224,0.4));
 }
-#btn-2-c:hover {
+
+@keyframes float-2a {
+  0%   { transform: translate(0px,    0px)   rotate(-15deg) scale(var(--s)); }
+  20%  { transform: translate(12px,   6px)   rotate(-15deg) scale(var(--s)); }
+  40%  { transform: translate(4px,  -10px)   rotate(-15deg) scale(var(--s)); }
+  60%  { transform: translate(-8px,  -6px)   rotate(-15deg) scale(var(--s)); }
+  80%  { transform: translate(-4px,   8px)   rotate(-15deg) scale(var(--s)); }
+  100% { transform: translate(0px,    0px)   rotate(-15deg) scale(var(--s)); }
+}
+@keyframes float-2b {
+  0%   { transform: translate(0px,    0px)   rotate(5deg) scale(var(--s)); }
+  25%  { transform: translate(8px,  -12px)   rotate(5deg) scale(var(--s)); }
+  50%  { transform: translate(14px,   4px)   rotate(5deg) scale(var(--s)); }
+  75%  { transform: translate(-6px,  10px)   rotate(5deg) scale(var(--s)); }
+  100% { transform: translate(0px,    0px)   rotate(5deg) scale(var(--s)); }
+}
+@keyframes float-2c {
+  0%   { transform: translate(0px,   0px)    rotate(22deg) scale(var(--s)); }
+  33%  { transform: translate(-10px,  8px)   rotate(22deg) scale(var(--s)); }
+  66%  { transform: translate(6px,  -14px)   rotate(22deg) scale(var(--s)); }
+  100% { transform: translate(0px,   0px)    rotate(22deg) scale(var(--s)); }
+}
+@keyframes float-2d {
+  0%   { transform: translate(0px,   0px)    rotate(-40deg) scale(var(--s)); }
+  33%  { transform: translate(-10px,  8px)   rotate(-40deg) scale(var(--s)); }
+  66%  { transform: translate(6px,  -14px)   rotate(-40deg) scale(var(--s)); }
+  100% { transform: translate(0px,   0px)    rotate(-40deg) scale(var(--s)); }
+}
+@keyframes float-2e {
+  0%   { transform: translate(0px,    0px)   rotate(50deg) scale(var(--s)); }
+  25%  { transform: translate(8px,  -12px)   rotate(50deg) scale(var(--s)); }
+  50%  { transform: translate(14px,   4px)   rotate(50deg) scale(var(--s)); }
+  75%  { transform: translate(-6px,  10px)   rotate(50deg) scale(var(--s)); }
+  100% { transform: translate(0px,    0px)   rotate(50deg) scale(var(--s)); }
+}
+#btn-2-a:hover, #btn-2-b:hover, #btn-2-c:hover, #btn-2-d:hover, #btn-2-e:hover {
   filter:
     drop-shadow(0 0 9px rgba(224,224,224,0.95))
     drop-shadow(0 0 21px rgba(224,224,224,0.75))

@@ -145,11 +145,12 @@ document.querySelectorAll('.cover-image').forEach(img => {
 // ═══════════════════════════════════════════════════════════
 
 document.querySelectorAll('.floating-btn').forEach(btn => {
+  const sectionId = btn.closest('.section').id;
+  const section   = parseInt(sectionId.split('-')[1], 10);
+  if (section === 0 || section === 2) return;
   btn.addEventListener('click', e => {
     e.stopPropagation();
-    const sectionId = btn.closest('.section').id;
-    const section   = parseInt(sectionId.split('-')[1], 10);
-    const btnIdx    = parseInt(btn.dataset.btn, 10);
+    const btnIdx = parseInt(btn.dataset.btn, 10);
     console.log('button', section, btnIdx);
   });
 });
@@ -298,16 +299,6 @@ function buildSection0(texture) {
   scene.add(imgMesh);
   imgMesh.position.y = 0.18;
 
-  function scheduleInkBleed() {
-    setTimeout(() => {
-      imgUniforms.uInkBleed.value = 1.0;
-      setTimeout(() => {
-        imgUniforms.uInkBleed.value = 0.0;
-        scheduleInkBleed();
-      }, 600);
-    }, 6000 + Math.random() * 4000);
-  }
-  scheduleInkBleed();
 
   sections[0] = {
     scene, imgMesh,
@@ -431,7 +422,15 @@ void main() {
   float spec = pow(w, 3.0) * uSpecStrength;
   color = mix(color, uSpecColor, spec);
 
-  gl_FragColor = vec4(color, 1.0);
+  // Máscara radial circular: corrige aspect ratio para que sea círculo perfecto
+  // maxSafeDist = distancia al borde más cercano desde el centro (top/bottom en landscape, left/right en portrait)
+  vec2 centerAspect = vec2(0.5 * aspect, 0.5);
+  float distFromCenter = length(uv - centerAspect);
+  float maxSafeDist = min(aspect * 0.5, 0.5);
+  float fadeRadius = maxSafeDist * 0.75;
+  float fade = 1.0 - smoothstep(fadeRadius * 0.55, fadeRadius, distFromCenter);
+
+  gl_FragColor = vec4(color, fade);
 }`;
 
 // ═══════════════════════════════════════════════════════════
@@ -473,6 +472,7 @@ function buildSection1(texture) {
       vertexShader:   VS_RIPPLE,
       fragmentShader: FS_RIPPLE,
       uniforms:       rippleUniforms,
+      transparent:    true,
     })
   );
   rippleMesh.position.z = -1;
@@ -570,16 +570,6 @@ function buildSection2(texture) {
   scene.add(imgMesh);
   imgMesh.position.y = 0.18;
 
-  function schedulePixelBreathe() {
-    setTimeout(() => {
-      imgUniforms.uPixelBreathe.value = 1.0;
-      setTimeout(() => {
-        imgUniforms.uPixelBreathe.value = 0.0;
-        schedulePixelBreathe();
-      }, 700);
-    }, 5000 + Math.random() * 4000);
-  }
-  schedulePixelBreathe();
 
   sections[2] = {
     scene, imgMesh,
