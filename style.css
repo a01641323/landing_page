@@ -458,8 +458,8 @@ body {
 #btn-2-a {
   width: clamp(160px, 52vmin, 280px); height: clamp(160px, 52vmin, 280px);
   animation: float-2a 13s ease-in-out infinite;
-  top: 9%;
-  left: 11%;
+  top: 1%;
+  left: 33%;
   filter:
     drop-shadow(0 0 2px rgba(224,224,224,1))
     drop-shadow(0 0 5px rgba(224,224,224,0.8))
@@ -468,8 +468,8 @@ body {
 #btn-2-b {
   width: clamp(110px, 36vmin, 200px); height: clamp(110px, 36vmin, 200px);
   animation: float-2b 18s ease-in-out infinite;
-  bottom: 22%;
-  right: 62%;
+  bottom: 61%;
+  right: 3%;
   filter:
     drop-shadow(0 0 2px rgba(224,224,224,1))
     drop-shadow(0 0 5px rgba(224,224,224,0.8))
@@ -478,8 +478,8 @@ body {
 #btn-2-c {
   width: clamp(210px, 67vmin, 340px); height: clamp(210px, 67vmin, 340px);
   animation: float-2c 22s ease-in-out infinite;
-  top: 19%;
-  right: 16%;
+  top: 28%;
+  right: 1%;
   filter:
     drop-shadow(0 0 2px rgba(224,224,224,1))
     drop-shadow(0 0 5px rgba(224,224,224,0.8))
@@ -488,8 +488,8 @@ body {
 #btn-2-d {
   width: clamp(70px, 23vmin, 130px); height: clamp(70px, 23vmin, 130px);
   animation: float-2d 16s ease-in-out infinite;
-  bottom: 12%;
-  right: 18%;
+  bottom: 83%;
+  right: 82%;
   filter:
     drop-shadow(0 0 2px rgba(224,224,224,1))
     drop-shadow(0 0 5px rgba(224,224,224,0.8))
@@ -498,8 +498,8 @@ body {
 #btn-2-e {
   width: clamp(140px, 44vmin, 240px); height: clamp(140px, 44vmin, 240px);
   animation: float-2e 20s ease-in-out infinite;
-  bottom: 38%;
-  left: 58%;
+  bottom: 53%;
+  left: 4%;
   filter:
     drop-shadow(0 0 2px rgba(224,224,224,1))
     drop-shadow(0 0 5px rgba(224,224,224,0.8))
