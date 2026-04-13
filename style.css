@@ -337,6 +337,15 @@ body {
     0 0 60px 18px rgba(142,68,173,0.35);
 }
 
+@keyframes breathe {
+  0%,  100% { transform: scale(1.0); }
+  50%        { transform: scale(1.08); }
+}
+
+#btn-0-a { animation: float-a 12s ease-in-out infinite, breathe 3.8s ease-in-out infinite; }
+#btn-0-b { animation: float-b 17s ease-in-out infinite, breathe 5.1s ease-in-out infinite 0.9s; }
+#btn-0-c { animation: float-c 21s ease-in-out infinite, breathe 4.4s ease-in-out infinite 2.1s; }
+
 /* Wave rings — Section 1
    3 concentric circles: outer thinnest, inner thickest */
 .btn-wave {

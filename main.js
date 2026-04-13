@@ -180,11 +180,31 @@ const FS_INK_BLEED = `
 uniform float uTime;
 uniform sampler2D uTexture;
 uniform float uInkBleed;
+uniform vec3  uHighlight;
+uniform float uHighlightStrength;
 varying vec2 vUv;
 ${GLSL_ROUND}
+
+// Detecta qué tan parecido es un píxel al color objetivo.
+// Compara en espacio RGB normalizado — tolerancia de 0.0 a 1.0.
+float colorMatch(vec3 pixel, vec3 target, float tolerance) {
+  // Normalizar ambos para comparar tono independientemente del brillo
+  float pLen = length(pixel);
+  float tLen = length(target);
+  if (pLen < 0.05 || tLen < 0.05) return 0.0;  // negro → no matchea
+  vec3 pNorm = pixel / pLen;
+  vec3 tNorm = target / tLen;
+  float dotPT = dot(pNorm, tNorm);
+  // dotPT va de -1 (opuesto) a 1 (idéntico)
+  // Convertir a match [0,1] con suavizado
+  return smoothstep(1.0 - tolerance, 1.0, dotPT);
+}
+
 void main() {
   float alpha = roundCornersAlpha(vUv, 0.015);
   vec2 uv = vUv;
+
+  // Ink bleed: UV warp orgánico (sin cambios)
   if (uInkBleed > 0.5) {
     float w1 = sin(uv.y * 9.0  + uTime * 2.3) * 0.006;
     float w2 = sin(uv.x * 7.0  + uTime * 1.8) * 0.004;
@@ -195,10 +215,35 @@ void main() {
     float g = texture2D(uTexture, uv).g;
     float b = texture2D(uTexture, uv + vec2(-0.002, -0.001)).b;
     gl_FragColor = vec4(r, g, b, alpha);
-  } else {
-    gl_FragColor = texture2D(uTexture, uv);
-    gl_FragColor.a *= alpha;
+    return;
   }
+
+  // Color base de la imagen
+  vec4 base = texture2D(uTexture, uv);
+
+  // Si no hay highlight activo, renderizar normal
+  if (uHighlightStrength < 0.01) {
+    gl_FragColor = vec4(base.rgb, base.a * alpha);
+    return;
+  }
+
+  // Detectar píxeles que pertenecen al color objetivo
+  // tolerance: 0.22 = solo coincidencias claras, sin falsos positivos
+  float match = colorMatch(base.rgb, uHighlight, 0.22);
+
+  // Boost del color objetivo: mezcla hacia versión más brillante/saturada
+  vec3 boosted = mix(base.rgb, uHighlight * 1.6, match * 0.55);
+
+  // El resto de la imagen se oscurece ligeramente para que resalte el color
+  vec3 dimmed = mix(base.rgb, base.rgb * 0.82, (1.0 - match) * 0.35);
+
+  // Combinar según match
+  vec3 highlighted = mix(dimmed, boosted, match);
+
+  // Transición suave entre normal y highlight según uHighlightStrength
+  vec3 finalColor = mix(base.rgb, highlighted, uHighlightStrength);
+
+  gl_FragColor = vec4(finalColor, base.a * alpha);
 }`;
 
 // Section 1 — Glitch Signal
@@ -227,25 +272,66 @@ void main() {
   }
 }`;
 
-// Section 2 — Pixel Breathe: idle neon pulse, triggered: pixelation breathes in/out
+// Section 2 — Pixel Breathe: idle neon flicker, triggered: pixelation breathes in/out
 const FS_PIXEL_BREATHE = `
 uniform float uTime;
 uniform sampler2D uTexture;
 uniform float uPixelBreathe;
 varying vec2 vUv;
 ${GLSL_ROUND}
+
 void main() {
   float alpha = roundCornersAlpha(vUv, 0.015);
   vec2 uv = vUv;
+
+  // Pixel breathe trigger — sin cambios
   if (uPixelBreathe > 0.5) {
     float breathe = 0.5 + 0.5 * sin(uTime * 5.0);
     float pixCount = mix(180.0, 80.0, breathe);
     uv = floor(uv * pixCount) / pixCount;
   }
+
   vec4 color = texture2D(uTexture, uv);
-  float isT = step(0.65, color.g) * step(0.65, color.b) * (1.0 - step(0.25, color.r));
-  float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vUv.x * 8.0);
-  color.rgb += vec3(0.0, 0.5, 0.5) * pulse * isT;
+
+  // Detector de píxeles turquesa/cyan:
+  // alto en G y B, bajo en R — igual que antes
+  float isT = step(0.55, color.g)
+            * step(0.55, color.b)
+            * (1.0 - step(0.30, color.r));
+
+  // ── Señal de foco fundiéndose ─────────────────────────────
+  // Combinación de senos con frecuencias primas → cadencia impredecible
+  // s1: oscilación lenta de fondo (el "respiro" base del foco)
+  float s1 = sin(uTime * 1.3);
+  // s2: temblor medio (inestabilidad eléctrica)
+  float s2 = sin(uTime * 3.7) * 0.6;
+  // s3: micro-parpadeo rápido (contacto flojo)
+  float s3 = sin(uTime * 11.0) * 0.25;
+  // s4: spike ocasional de alta frecuencia (descarga)
+  float s4 = sin(uTime * 23.0) * 0.15;
+
+  // Señal combinada: suma en [-1, 1], luego normalizar a [0, 1]
+  float flicker = (s1 + s2 + s3 + s4) / (1.0 + 0.6 + 0.25 + 0.15);
+  flicker = flicker * 0.5 + 0.5;
+
+  // Apagón: cuando la señal baja mucho, el foco se apaga casi del todo
+  // pow() hace que los valles sean más profundos (más tiempo apagado)
+  // y los picos más cortos (destellos breves)
+  flicker = pow(flicker, 2.2);
+
+  // Clamp para seguridad
+  flicker = clamp(flicker, 0.0, 1.0);
+
+  // Aplicar parpadeo solo a los píxeles turquesa
+  // En los picos: el color turquesa se amplifica hacia blanco brillante
+  // En los valles: el color turquesa se oscurece casi a negro
+  vec3 tColor = vec3(0.0, 0.83, 0.83); // #00d4d4 — el turquesa base
+  vec3 bright = mix(tColor * 0.1, tColor * 2.2, flicker); // oscuro → sobre-expuesto
+
+  // Mezclar: los píxeles turquesa reciben el parpadeo,
+  // el resto de la imagen queda intacto
+  color.rgb = mix(color.rgb, bright, isT * 0.85);
+
   color.a *= alpha;
   gl_FragColor = color;
 }`;
@@ -281,10 +367,24 @@ function buildSection0(texture) {
   const scene = new THREE.Scene();
   const sz = imgSize(0);
 
+  // Colores a resaltar por turno — extraídos de la imagen
+  const HIGHLIGHT_COLORS = [
+    [0.85, 0.82, 0.08],   // amarillo — sol, corona
+    [0.85, 0.12, 0.10],   // rojo     — círculo, vestidos
+    [0.10, 0.72, 0.18],   // verde    — pasto, corona
+    [0.55, 0.10, 0.75],   // morado   — tonos violeta
+    [0.90, 0.45, 0.08],   // naranja  — pétalos del sol
+  ];
+
+  const HIGHLIGHT_DURATION = 2.2;
+  const HIGHLIGHT_FADE     = 0.5;
+
   const imgUniforms = {
-    uTime:     { value: 0 },
-    uTexture:  { value: texture },
-    uInkBleed: { value: 0.0 },
+    uTime:              { value: 0 },
+    uTexture:           { value: texture },
+    uInkBleed:          { value: 0.0 },
+    uHighlight:         { value: new THREE.Vector3(0.85, 0.82, 0.08) },
+    uHighlightStrength: { value: 0.0 },
   };
   const imgMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(sz, sz),
@@ -303,6 +403,26 @@ function buildSection0(texture) {
   sections[0] = {
     scene, imgMesh,
     update(t) {
+      // ── Color highlight rotation ──────────────────────────
+      const cycleDuration = HIGHLIGHT_DURATION + HIGHLIGHT_FADE * 2;
+      const totalCycle    = cycleDuration * HIGHLIGHT_COLORS.length;
+      const tMod          = t % totalCycle;
+      const colorIdx      = Math.floor(tMod / cycleDuration);
+      const tInCycle      = tMod % cycleDuration;
+
+      let strength = 0.0;
+      if (tInCycle < HIGHLIGHT_FADE) {
+        strength = tInCycle / HIGHLIGHT_FADE;
+      } else if (tInCycle < HIGHLIGHT_FADE + HIGHLIGHT_DURATION) {
+        strength = 1.0;
+      } else {
+        strength = 1.0 - (tInCycle - HIGHLIGHT_FADE - HIGHLIGHT_DURATION) / HIGHLIGHT_FADE;
+      }
+
+      const c = HIGHLIGHT_COLORS[colorIdx % HIGHLIGHT_COLORS.length];
+      imgUniforms.uHighlight.value.set(c[0], c[1], c[2]);
+      imgUniforms.uHighlightStrength.value = Math.max(0.0, Math.min(1.0, strength));
+
       imgUniforms.uTime.value = t;
       imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
@@ -574,6 +694,30 @@ function buildSection2(texture) {
   sections[2] = {
     scene, imgMesh,
     update(t) {
+      // ── Sincronizar brillo de coronas con parpadeo del shader ──
+      // Mismas frecuencias que s1-s4 en FS_PIXEL_BREATHE
+      const s1 = Math.sin(t * 1.3);
+      const s2 = Math.sin(t * 3.7) * 0.6;
+      const s3 = Math.sin(t * 11.0) * 0.25;
+      const s4 = Math.sin(t * 23.0) * 0.15;
+      let flicker = (s1 + s2 + s3 + s4) / (1.0 + 0.6 + 0.25 + 0.15);
+      flicker = flicker * 0.5 + 0.5;
+      flicker = Math.pow(flicker, 2.2);
+      flicker = Math.max(0, Math.min(1, flicker));
+
+      // Interpolar brillo de los drop-shadows entre apagado y encendido
+      // Los valores base vienen del CSS actual de cada botón
+      const crowns = document.querySelectorAll('#section-2 .floating-btn');
+      crowns.forEach(el => {
+        // Opacidades: apagado → encendido (mismos valores que en el CSS base)
+        const o1 = (0.1  + flicker * 0.8).toFixed(2);  // 0.1 → 0.9
+        const o2 = (0.05 + flicker * 0.7).toFixed(2);  // 0.05 → 0.75
+        const o3 = (0.0  + flicker * 0.3).toFixed(2);  // 0.0 → 0.3
+        el.style.filter =
+          `drop-shadow(0 0 2px rgba(176,184,193,${o1}))` +
+          ` drop-shadow(0 0 5px rgba(176,184,193,${o2}))` +
+          ` drop-shadow(0 0 10px rgba(176,184,193,${o3}))`;
+      });
       imgUniforms.uTime.value = t;
       imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
       imgMesh.rotation.z = Math.sin(t * 0.4) * 0.03;
