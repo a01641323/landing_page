@@ -326,11 +326,11 @@ void main() {
   // En los picos: el color turquesa se amplifica hacia blanco brillante
   // En los valles: el color turquesa se oscurece casi a negro
   vec3 tColor = vec3(0.0, 0.83, 0.83); // #00d4d4 — el turquesa base
-  vec3 bright = mix(tColor * 0.1, tColor * 2.2, flicker); // oscuro → sobre-expuesto
+  vec3 bright = mix(tColor * 0.05, tColor * 3.2, flicker); // oscuro → sobre-expuesto
 
   // Mezclar: los píxeles turquesa reciben el parpadeo,
   // el resto de la imagen queda intacto
-  color.rgb = mix(color.rgb, bright, isT * 0.85);
+  color.rgb = mix(color.rgb, bright, isT * 1.0);
 
   color.a *= alpha;
   gl_FragColor = color;
@@ -706,17 +706,15 @@ function buildSection2(texture) {
       flicker = Math.max(0, Math.min(1, flicker));
 
       // Interpolar brillo de los drop-shadows entre apagado y encendido
-      // Los valores base vienen del CSS actual de cada botón
       const crowns = document.querySelectorAll('#section-2 .floating-btn');
       crowns.forEach(el => {
-        // Opacidades: apagado → encendido (mismos valores que en el CSS base)
-        const o1 = (0.1  + flicker * 0.8).toFixed(2);  // 0.1 → 0.9
-        const o2 = (0.05 + flicker * 0.7).toFixed(2);  // 0.05 → 0.75
-        const o3 = (0.0  + flicker * 0.3).toFixed(2);  // 0.0 → 0.3
+        const o1 = (0.05 + flicker * 1.0).toFixed(2);  // 0.05 → 1.05
+        const o2 = (0.0  + flicker * 0.9).toFixed(2);  // 0.0  → 0.9
+        const o3 = (0.0  + flicker * 0.55).toFixed(2); // 0.0  → 0.55
         el.style.filter =
-          `drop-shadow(0 0 2px rgba(176,184,193,${o1}))` +
-          ` drop-shadow(0 0 5px rgba(176,184,193,${o2}))` +
-          ` drop-shadow(0 0 10px rgba(176,184,193,${o3}))`;
+          `drop-shadow(0 0 4px rgba(176,184,193,${o1}))` +
+          ` drop-shadow(0 0 12px rgba(176,184,193,${o2}))` +
+          ` drop-shadow(0 0 26px rgba(176,184,193,${o3}))`;
       });
       imgUniforms.uTime.value = t;
       imgMesh.position.y = 0.18 + Math.sin(t * 0.6) * 0.08;
