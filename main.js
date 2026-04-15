@@ -124,8 +124,7 @@ function updatePlatformUI() {
   platformImg.src = p.icon;
   platformImg.alt = p.label;
   platformImg.dataset.platform = p.id;
-  const accent = sectionAccents[currentSection];
-  switcher.style.boxShadow = `0 0 14px 4px ${accent}55, 0 0 4px 1px ${accent}99`;
+  switcher.style.boxShadow = '';
 }
 
 function updateSatelliteIcons() {
@@ -162,6 +161,7 @@ function openMenu() {
 function closeMenu() {
   if (!menuOpen) return;
   menuOpen = false;
+  switcher.style.boxShadow = '';
   document.getElementById('platform-overlay').classList.remove('active');
   satellites.forEach((sat, i) => {
     setTimeout(() => {

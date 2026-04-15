@@ -852,5 +852,5 @@ body {
   height: 24px;
   object-fit: contain;
   display: block;
-  filter: brightness(0) invert(1);
+  filter: brightness(0) invert(0.82);
 }
