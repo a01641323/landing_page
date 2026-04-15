@@ -77,9 +77,10 @@ async function parseLinks() {
         return;
       }
       if (!currentKey) return;
-      if (line.startsWith('Spotify:'))           links[currentKey].spotify    = line.slice(8).trim();
-      else if (line.startsWith('Apple Music:'))  links[currentKey].applemusic = line.slice(12).trim();
-      else if (line.startsWith('Amazon Music:')) links[currentKey].amazon     = line.slice(13).trim();
+      if (line.startsWith('Spotify:'))              links[currentKey].spotify      = line.slice(8).trim();
+      else if (line.startsWith('Apple Music:'))     links[currentKey].applemusic   = line.slice(12).trim();
+      else if (line.startsWith('Amazon Music:'))    links[currentKey].amazon       = line.slice(13).trim();
+      else if (line.startsWith('YouTube Music:'))   links[currentKey].youtubemusic = line.slice(15).trim();
     });
   } catch (err) {
     console.warn('[links]', err);
@@ -93,18 +94,30 @@ const sectionAlbums = ['elyella', 'residuosdeunavoz', 'principeturquesa', 'matia
 // ═══════════════════════════════════════════════════════════
 
 const platforms = [
-  { id: 'spotify',    icon: 'icons/spotify.png',     label: 'Spotify' },
-  { id: 'applemusic', icon: 'icons/applemusic.png',  label: 'Apple Music' },
-  { id: 'amazon',     icon: 'icons/amazonmusic.png', label: 'Amazon Music' },
+  { id: 'spotify',      icon: 'icons/spotify.png',      label: 'Spotify' },
+  { id: 'applemusic',   icon: 'icons/applemusic.png',   label: 'Apple Music' },
+  { id: 'amazon',       icon: 'icons/amazonmusic.png',  label: 'Amazon Music' },
+  { id: 'youtubemusic', icon: 'icons/youtubemusic.png', label: 'YouTube Music' },
 ];
 
 const sectionAccents = ['#f39c12', '#48c9b0', '#00d4d4', '#b0b8c1'];
 
 let activePlatformIndex = 0;
 let activePlatform      = platforms[0].id;
+let menuOpen            = false;
 
 const switcher    = document.getElementById('platform-switcher');
 const platformImg = document.getElementById('platform-logo');
+const satellites  = document.querySelectorAll('.platform-satellite');
+
+// Arco de 3 satélites con radio=76px, ángulos 10°/46°/82° (espaciado igual de 36°)
+// x = -r·cos(θ), y = r·sin(θ)  →  de "izquierda" a "abajo"
+const SAT_POSITIONS = [
+  { x: -75, y: 13 },
+  { x: -53, y: 55 },
+  { x: -11, y: 75 },
+  { x:   0, y: 76 },
+];
 
 function updatePlatformUI() {
   const p = platforms[activePlatformIndex];
@@ -115,15 +128,79 @@ function updatePlatformUI() {
   switcher.style.boxShadow = `0 0 14px 4px ${accent}55, 0 0 4px 1px ${accent}99`;
 }
 
-switcher.addEventListener('click', () => {
-  activePlatformIndex = (activePlatformIndex + 1) % platforms.length;
-  activePlatform      = platforms[activePlatformIndex].id;
+function updateSatelliteIcons() {
+  const others = platforms
+    .map((p, i) => ({ ...p, index: i }))
+    .filter(p => p.index !== activePlatformIndex);
+
+  satellites.forEach((sat, i) => {
+    const platform = others[i];
+    if (!platform) { sat.style.display = 'none'; return; }
+    sat.style.display = '';
+    const img = sat.querySelector('img');
+    img.src = platform.icon;
+    img.alt = platform.label;
+    img.dataset.platform = platform.id;
+    sat.dataset.index = platform.index;
+  });
+}
+
+function openMenu() {
+  if (menuOpen) return;
+  menuOpen = true;
+  updateSatelliteIcons();
+  document.getElementById('platform-overlay').classList.add('active');
+  satellites.forEach((sat, i) => {
+    const pos = SAT_POSITIONS[i];
+    setTimeout(() => {
+      sat.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(1)`;
+      sat.classList.add('visible');
+    }, i * 40);
+  });
+}
+
+function closeMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  document.getElementById('platform-overlay').classList.remove('active');
+  satellites.forEach((sat, i) => {
+    setTimeout(() => {
+      sat.style.transform = `translate(0px, 0px) scale(0.5)`;
+      sat.classList.remove('visible');
+    }, i * 30);
+  });
+}
+
+function selectPlatform(index) {
+  activePlatformIndex = index;
+  activePlatform      = platforms[index].id;
   platformImg.style.opacity = '0';
   setTimeout(() => { updatePlatformUI(); platformImg.style.opacity = '1'; }, 120);
+  closeMenu();
+}
+
+switcher.addEventListener('click', e => {
+  e.stopPropagation();
+  menuOpen ? closeMenu() : openMenu();
+});
+
+satellites.forEach(sat => {
+  sat.addEventListener('click', e => {
+    e.stopPropagation();
+    const index = parseInt(sat.dataset.index, 10);
+    selectPlatform(index);
+  });
+});
+
+document.addEventListener('click', e => {
+  if (menuOpen && !e.target.closest('#platform-switcher-group')) {
+    closeMenu();
+  }
 });
 
 switcher.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switcher.click(); }
+  if (e.key === 'Escape') closeMenu();
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1090,6 +1167,9 @@ function initDots() {
 async function boot() {
   await parseLinks();
   document.body.style.backgroundColor = sectionBg[0];
+  const overlay = document.createElement('div');
+  overlay.id = 'platform-overlay';
+  document.body.appendChild(overlay);
   updatePlatformUI();
   initDots();
   initThreeJS();

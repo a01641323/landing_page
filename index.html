@@ -20,8 +20,22 @@
   <!-- Bat-Signal beam rendered by Three.js on canvas -->
 
   <!-- Platform switcher — fixed top-right, always visible, z-index:1000 -->
-  <div id="platform-switcher" role="button" aria-label="Cambiar plataforma" tabindex="0">
-    <img id="platform-logo" src="icons/spotify.png" alt="Spotify" />
+  <div id="platform-switcher-group">
+    <div id="platform-switcher" role="button" aria-label="Cambiar plataforma" tabindex="0">
+      <img id="platform-logo" src="icons/spotify.png" alt="Spotify" />
+    </div>
+    <div class="platform-satellite" id="sat-0" data-index="0">
+      <img src="icons/spotify.png" alt="Spotify" />
+    </div>
+    <div class="platform-satellite" id="sat-1" data-index="1">
+      <img src="icons/applemusic.png" alt="Apple Music" />
+    </div>
+    <div class="platform-satellite" id="sat-2" data-index="2">
+      <img src="icons/amazonmusic.png" alt="Amazon Music" />
+    </div>
+    <div class="platform-satellite" id="sat-3" data-index="3">
+      <img src="icons/youtubemusic.png" alt="YouTube Music" />
+    </div>
   </div>
 
   <!-- All sections stacked vertically -->
@@ -35,7 +49,7 @@
         <div class="floating-btn btn-circle" id="btn-0-b" data-btn="1"></div>
         <div class="floating-btn btn-circle" id="btn-0-c" data-btn="2"></div>
         <p class="text-block" id="text-0">
-          Dos personas víctimas de la misma historia de “amor” con visiones totalmente diferentes de su propia trama.
+          Él no sabe. Creo que ella tampoco. Si los dos supieran, yo no narraría su historia. Puedo sospechar que alguno está por terminar ahogándose en su propio poema. No sé quién tenga la razón; solo canto lo que veo.
         </p>
       </div>
     </section>
@@ -45,7 +59,7 @@
       <div class="section-inner">
         <img class="cover-image" id="cover-1" src="icons/residuosdeunavoz.png" alt="Residuos de una voz" data-section="1" />
         <p class="text-block" id="text-1">
-          Además de ser una melodía llena de sentimiento, el poema descrito en la letra habla sobre el suicidio de la forma más profunda y elocuente.
+          La voz no siempre habla. A veces solo dice cosas. No tiene tiempo. Será visiones o será vestigios. Si la escuchas, ten cuidado porque puede atarte. Y no es que tenga vida propia, pero tampoco es que no la tenga.
         </p>
       </div>
     </section>
@@ -58,7 +72,7 @@
         <img class="floating-btn" id="btn-2-b" data-btn="1" src="icons/corona.png" alt="Corona" />
         <img class="floating-btn" id="btn-2-d" data-btn="3" src="icons/corona.png" alt="Corona" />
         <p class="text-block" id="text-2">
-          Si se usa el alma para componer una canción, debe usarse también para interpretarla.
+          En ciertos cuentos, hay quien muere por amor. En otros se cava una tumba y se espera encontrarlo dentro. Puede que la vida sin amar sea aun peor que amar sin vida. Un príncipe está rodeado de lujos y de espadas.
         </p>
       </div>
     </section>
@@ -72,7 +86,15 @@
         <div id="portrait-radial-glow"></div>
         <div class="artist-text" id="text-3">
           <h1 class="artist-name">Matías Hidalgo</h1>
-          <p class="artist-tagline" data-text="Canciones que se quedan."></p>
+          <p class="artist-tagline" data-text="Canto para hablar de más."></p>
+          <div class="artist-social">
+            <a href="https://www.instagram.com/matiashhidalgo/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+              <img src="icons/instagram.svg" alt="Instagram" class="social-icon" />
+            </a>
+            <a href="https://www.tiktok.com/@matiashhidalgo/" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+              <img src="icons/tiktok.svg" alt="TikTok" class="social-icon" />
+            </a>
+          </div>
         </div>
       </div>
     </section>
