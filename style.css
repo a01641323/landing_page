@@ -725,11 +725,18 @@ body {
     height: 36px;
   }
 
-  #platform-switcher {
-    width: 56px;
-    height: 56px;
+    #platform-switcher-group {
     top: 20px;
     right: 20px;
+    width: 56px;
+    height: 56px;
+  }
+
+  #platform-switcher {
+    top: 0;
+    right: 0;
+    width: 56px;
+    height: 56px;
   }
 }
 

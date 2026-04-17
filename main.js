@@ -110,14 +110,19 @@ const switcher    = document.getElementById('platform-switcher');
 const platformImg = document.getElementById('platform-logo');
 const satellites  = document.querySelectorAll('.platform-satellite');
 
-// Arco de 3 satélites con radio=76px, ángulos 10°/46°/82° (espaciado igual de 36°)
-// x = -r·cos(θ), y = r·sin(θ)  →  de "izquierda" a "abajo"
-const SAT_POSITIONS = [
-  { x: -75, y: 13 },
-  { x: -53, y: 55 },
-  { x: -11, y: 75 },
-  { x:   0, y: 76 },
-];
+// Arco de satélites: radio = botón + 28px, ángulos 10°/46°/82°/90°
+// x = -r·cos(θ) + off,  y = r·sin(θ) + off
+// off = (btnSize - satSize) / 2  → centra el arco en el botón
+function getSatPositions() {
+  const btnSize = window.innerWidth >= 768 ? 56 : 48;
+  const satSize = 40;
+  const off = (btnSize - satSize) / 2;
+  const r   = btnSize + 28;
+  return [10, 46, 82, 90].map(deg => ({
+    x: -(r * Math.cos(deg * Math.PI / 180)) + off,
+    y:   r * Math.sin(deg * Math.PI / 180)  + off,
+  }));
+}
 
 function updatePlatformUI() {
   const p = platforms[activePlatformIndex];
@@ -146,10 +151,12 @@ function updateSatelliteIcons() {
 
 function openMenu() {
   if (menuOpen) return;
-  menuOpen = true;
+  // One-time peek: satellites start already open, then retract after a moment
   updateSatelliteIcons();
+  menuOpen = true;
+  const peekPositions = getSatPositions();
   satellites.forEach((sat, i) => {
-    const pos = SAT_POSITIONS[i];
+    const pos = peekPositions[i];
     setTimeout(() => {
       sat.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(1)`;
       sat.classList.add('visible');
@@ -1189,6 +1196,22 @@ async function boot() {
   initDots();
   initThreeJS();
   if (currentSection === 3) runTaglineReveal();
+
+  // One-time peek: satellites start already open, then retract after 0.3s
+  updateSatelliteIcons();
+  menuOpen = true;
+  const peekPos = getSatPositions();
+  satellites.forEach((sat, i) => {
+    const pos = peekPos[i];
+    sat.style.transition = 'none';
+    sat.style.transform  = `translate(${pos.x}px, ${pos.y}px) scale(1)`;
+    sat.classList.add('visible');
+  });
+  // Restore transitions after first paint, then close
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    satellites.forEach(sat => { sat.style.transition = ''; });
+    setTimeout(() => closeMenu(), 300);
+  }));
 }
 
 boot();
