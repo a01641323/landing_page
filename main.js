@@ -148,7 +148,6 @@ function openMenu() {
   if (menuOpen) return;
   menuOpen = true;
   updateSatelliteIcons();
-  document.getElementById('platform-overlay').classList.add('active');
   satellites.forEach((sat, i) => {
     const pos = SAT_POSITIONS[i];
     setTimeout(() => {
@@ -162,7 +161,6 @@ function closeMenu() {
   if (!menuOpen) return;
   menuOpen = false;
   switcher.style.boxShadow = '';
-  document.getElementById('platform-overlay').classList.remove('active');
   satellites.forEach((sat, i) => {
     setTimeout(() => {
       sat.style.transform = `translate(0px, 0px) scale(0.5)`;
@@ -193,9 +191,7 @@ satellites.forEach(sat => {
 });
 
 document.addEventListener('click', e => {
-  if (menuOpen && !e.target.closest('#platform-switcher-group')) {
-    closeMenu();
-  }
+  if (menuOpen && !e.target.closest('#platform-switcher-group')) closeMenu();
 });
 
 switcher.addEventListener('keydown', e => {
@@ -945,6 +941,7 @@ function initThreeJS() {
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.z = 5;
+    scaleTextBlocks();
 
     const srcs     = ['icons/elyella.png', 'icons/residuosdeunavoz.png', 'icons/principeturquesa.png'];
     const builders = [buildSection0, buildSection1, buildSection2];
@@ -957,6 +954,26 @@ function initThreeJS() {
     console.warn('[three] WebGL unavailable:', err);
     canvas.style.display = 'none';
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEXT SCALE — fixed reference layout, JS-driven scale()
+// ═══════════════════════════════════════════════════════════
+
+const TEXT_REF_WIDTH = 500;
+
+function scaleTextBlocks() {
+  if (!camera) return;
+  const d = worldDims();
+  const mob = window.innerWidth < 768;
+  const szWorld = mob ? 0.72 * d.w : Math.min(0.55 * d.h, 0.55 * d.w);
+  // Convert Three.js world-unit photo width → CSS pixels
+  const photoPx = szWorld * (window.innerHeight / d.h);
+  const scale = photoPx / TEXT_REF_WIDTH;
+  [0, 1, 2].forEach(i => {
+    const el = document.getElementById(`text-${i}`);
+    if (el) el.style.transform = `scale(${scale})`;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -975,6 +992,7 @@ function onResize() {
     sections[i].imgMesh.geometry.dispose();
     sections[i].imgMesh.geometry = new THREE.PlaneGeometry(sz, sz);
   });
+  scaleTextBlocks();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1167,9 +1185,6 @@ function initDots() {
 async function boot() {
   await parseLinks();
   document.body.style.backgroundColor = sectionBg[0];
-  const overlay = document.createElement('div');
-  overlay.id = 'platform-overlay';
-  document.body.appendChild(overlay);
   updatePlatformUI();
   initDots();
   initThreeJS();

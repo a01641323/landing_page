@@ -121,9 +121,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  padding: 1rem;
+  justify-content: flex-start;
+  padding-top: calc(50vh - 36vmin);
+  gap: 2vmin;
   will-change: transform;
 }
 
@@ -132,8 +132,8 @@ body {
    visible for section 3 (CSS circular portrait)
    ============================================================ */
 .cover-image {
-  width: 72vw;
-  height: 72vw;
+  width: 72vmin;
+  height: 72vmin;
   object-fit: cover;
   border-radius: 6px;
   cursor: pointer;
@@ -141,7 +141,7 @@ body {
   user-select: none;
   flex-shrink: 0;
   opacity: 0;
-  pointer-events: none; /* Three.js images: clicks go to HTML overlay */
+  pointer-events: none;
 }
 
 /* Section 0-2 images keep pointer-events for click link opening */
@@ -153,20 +153,30 @@ body {
 
 /* Section 3 — circular portrait */
 #portrait-frame {
-  width: min(52vw, 200px);
-  height: min(52vw, 200px);
+  width: 40vmin;
+  height: 40vmin;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   z-index: 30;
-  opacity: 1;
-  mix-blend-mode: normal;
-  mask-image: none;
-  -webkit-mask-image: none;
+  opacity: 0.52;
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(
+    circle,
+    rgba(0,0,0,1) 45%,
+    rgba(0,0,0,0.7) 62%,
+    rgba(0,0,0,0) 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    rgba(0,0,0,1) 45%,
+    rgba(0,0,0,0.7) 62%,
+    rgba(0,0,0,0) 78%
+  );
   box-shadow:
-    0 0 0 2px rgba(176,184,193,0.3),
-    0 0 24px 6px rgba(176,184,193,0.2),
-    0 0 60px 20px rgba(176,184,193,0.08);
+    0 0 30px 8px rgba(176,184,193,0.42),
+    0 0 60px 20px rgba(176,184,193,0.21),
+    0 0 100px 40px rgba(176,184,193,0.1);
   animation: portrait-glow-pulse 4s ease-in-out infinite;
   will-change: transform;
 }
@@ -294,8 +304,8 @@ body {
 #btn-0-b {
   background: #27ae60;
   animation: float-b 17s ease-in-out infinite;
-  bottom: 13%;
-  right: 8%;
+  bottom: 9%;
+  right: 5%;
   box-shadow:
     0 0 8px 2px  rgba(39,174,96,0.9),
     0 0 20px 6px rgba(39,174,96,0.5),
@@ -537,65 +547,36 @@ body {
 }
 
 /* ============================================================
-   TEXT BLOCKS
+   TEXT BLOCKS — fixed reference size, JS applies scale()
    ============================================================ */
 .text-block {
+  display: block;
+  width: 500px;
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 26px;
   font-weight: 500;
-  line-height: 1.7;
-  text-align: justify;
-  text-align-last: justify;
-  hyphens: auto;
-  -webkit-hyphens: auto;
-  word-break: break-word;
-  max-width: min(55vh, 55vw);
-  padding: 0;
-  font-style: italic;
-  letter-spacing: 0.01em;
+  font-style: normal;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
   position: relative;
   z-index: 20;
+  text-align: justify;
+  text-align-last: justify;
+  margin: 0;
+  transform-origin: top center;
+  flex-shrink: 0;
 }
 
 @media (max-width: 767px) {
-  .text-block {
-    max-width: 72vw;
-  }
+  .section-inner { gap: 2vmin; }
 }
 
 #text-0 {
-  font-family: var(--font-body);
-  margin-top: 4vh;
-  font-size: clamp(1.18rem, 3.73vw, 1.49rem);
-  font-weight: 500;
-  font-style: normal;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
   color: var(--s0-accent);
   font-variation-settings: 'opsz' 12, 'wght' 300;
 }
-
-#text-1 {
-  font-family: var(--font-body);
-  margin-top: 4vh;
-  font-size: clamp(1.18rem, 3.73vw, 1.49rem);
-  font-weight: 500;
-  font-style: normal;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--s1-accent);
-}
-
-#text-2 {
-  font-family: var(--font-body);
-  margin-top: 4vh;
-  font-size: clamp(1.18rem, 3.73vw, 1.49rem);
-  font-weight: 500;
-  font-style: normal;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--s2-accent);
-}
+#text-1 { color: var(--s1-accent); }
+#text-2 { color: var(--s2-accent); }
 
 /* ============================================================
    SECTION 3 — ARTIST
@@ -623,15 +604,14 @@ body {
 
 .artist-text {
   text-align: center;
-  margin-top: 0;
+  margin-top: 3vmin;
   position: relative;
   z-index: 30;
-  padding: 0 8%;
 }
 
 .artist-name {
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 9vw, 4.2rem);
+  font-size: clamp(1.8rem, 5.5vmin, 4rem);
   font-weight: 800;
   font-style: normal;
   font-variation-settings: 'opsz' 72, 'wdth' 100;
@@ -677,13 +657,13 @@ body {
 
 .artist-tagline {
   font-family: var(--font-body);
-  font-size: clamp(1.1rem, 3.6vw, 1.45rem);
+  font-size: clamp(0.7rem, 1.8vmin, 1rem);
   font-weight: 500;
   font-style: normal;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgba(176, 184, 193, 0.55);
-  margin-top: 0.2rem;
+  margin-top: 1vmin;
   min-height: 1.4em;
 }
 
@@ -714,22 +694,20 @@ body {
   box-shadow: 0 0 6px 2px var(--accent, white);
 }
 
-/* ============================================================
-   MOBILE — tighter gap so image and text never collide
-   ============================================================ */
-@media (max-width: 767px) {
-  .section-inner { gap: 16px; }
-}
 
 /* ============================================================
    DESKTOP (≥ 768px)
    ============================================================ */
 @media (min-width: 768px) {
+  /* Three.js desktop imgSize = min(0.55*worldH, 0.55*worldW) ≈ 55vmin */
   .cover-image {
-    width: auto;
-    height: auto;
-    max-height: 55vh;
-    max-width: 55vh;
+    width: 55vmin;
+    height: 55vmin;
+  }
+
+  .section-inner {
+    padding-top: calc(50vh - 27.5vmin);
+    gap: 2vmin;
   }
 
   #portrait-radial-glow {
@@ -740,10 +718,6 @@ body {
   #platform-logo[data-platform="applemusic"] {
     width: 43px;
     height: 43px;
-  }
-
-  .text-block {
-    font-size: 1rem;
   }
 
   #platform-logo {
@@ -809,19 +783,6 @@ body {
   pointer-events: all;
 }
 
-#platform-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0);
-  z-index: 999;
-  pointer-events: none;
-  transition: background 0.35s ease;
-}
-
-#platform-overlay.active {
-  background: rgba(0, 0, 0, 0.35);
-  pointer-events: all;
-}
 
 .artist-social {
   display: flex;
