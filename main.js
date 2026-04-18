@@ -15,25 +15,42 @@ const PERF = { reduced: isMobile || (navigator.hardwareConcurrency || 8) <= 4 };
 // ═══════════════════════════════════════════════════════════
 
 const SECTION_COUNT = 4;
-const FLIP_DRAG_PX  = 280; // accumulated px for a full 180° flip
+
+// Spring physics — hybrid snappy + breathing (settle ~570ms, ~2% overshoot)
+const SPRING_STIFF    = 280;
+const SPRING_DAMP     = 26;
+const BG_SPRING_STIFF = 180;   // background color trails the slide (~800ms)
+const BG_SPRING_DAMP  = 28;
+
+// Commit thresholds
+const COMMIT_DRAG_RATIO  = 0.30;
+const COMMIT_VEL_PX_MS   = 0.6;
+
+// Anti-skip
+const POST_COMMIT_LOCKOUT_MS = 400;
+const WHEEL_IDLE_GATE_MS     = 80;
+const WHEEL_RELEASE_IDLE_MS  = 120;
 
 let currentSection = 0;
 
-// Active interactive flip — null when idle
-let interFlip = null;
+// Active slide — null when idle
+let interSlide = null;
 /*
-  interFlip = {
-    fromIdx, toIdx, direction,   // direction: +1 fwd / -1 back
-    angle,                       // 0 → Math.PI
-    snapping,                    // bool: auto-snap running
-    snapTarget,                  // 0 (cancel) or Math.PI (commit)
-    snapStartAngle,
-    snapStartTime,
-    swapped,                     // bool: wrapper already at toIdx
+  interSlide = {
+    fromIdx, toIdx, direction,    // direction: +1 fwd / -1 back
+    dragPx,                       // 0..vh, screen px toward destination
+    velocity,                     // px/ms, smoothed (for release decision)
+    state,                        // 'dragging' | 'releasing'
+    springTarget,                 // 0 (cancel) | vh (commit)
+    swapped,                      // bool: currentSection already toIdx
+    bgLerp, bgVel,                // 0..1, background color crossfade spring
+    lastFrameTime, lastInputTime,
   }
 */
 
-let wheelIdleTimer = null;
+let lockoutUntil       = 0;        // performance.now() until which wheel is ignored
+let wheelLastEventTime = 0;        // for idle gate after lockout
+let wheelIdleTimer     = null;
 
 function hexRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -1031,48 +1048,63 @@ function onResize() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// INTERACTIVE FLIP SYSTEM
+// INTERACTIVE SLIDE SYSTEM — vertical spring physics
 // ═══════════════════════════════════════════════════════════
 
-function flipSetup(fromIdx, toIdx, direction) {
-  interFlip = {
+function slideSetup(fromIdx, toIdx, direction) {
+  interSlide = {
     fromIdx, toIdx, direction,
-    angle: 0, snapping: false,
-    snapTarget: 0, snapStartAngle: 0, snapStartTime: 0,
+    dragPx: 0, velocity: 0,
+    state: 'dragging',           // 'dragging' | 'releasing'
+    springTarget: 0,
     swapped: false,
+    bgLerp: 0, bgVel: 0,
+    lastFrameTime: performance.now(),
+    lastInputTime: performance.now(),
   };
   const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
   const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
   if (fromInner) { fromInner.style.transition = 'none'; fromInner.style.opacity = '1'; }
   if (toInner)   { toInner.style.transition   = 'none'; toInner.style.opacity   = '0'; }
+  // Make to-shadow visible during transit (only sections 0-2 have shadows)
+  if (toIdx <= 2) {
+    const toShadow = document.getElementById(`cover-${toIdx}-shadow`);
+    if (toShadow) toShadow.style.display = 'block';
+  }
 }
 
-function flipAddAngle(da) {
-  if (!interFlip || interFlip.snapping) return;
-  interFlip.angle = Math.max(0, Math.min(Math.PI, interFlip.angle + da));
+function slideAddInput(deltaPx) {
+  if (!interSlide || interSlide.state !== 'dragging') return;
+  const s = interSlide;
+  const vh = window.innerHeight;
+  const prev = s.dragPx;
+  s.dragPx = Math.max(-vh * 0.05, Math.min(vh, s.dragPx + deltaPx));
+  const now = performance.now();
+  const dt  = Math.max(1, now - s.lastInputTime);
+  const instVel = (s.dragPx - prev) / dt;
+  s.velocity = s.velocity * 0.55 + instVel * 0.45;
+  s.lastInputTime = now;
 }
 
-function flipBeginSnap() {
-  if (!interFlip || interFlip.snapping) return;
-  interFlip.snapping       = true;
-  interFlip.snapTarget     = interFlip.angle >= Math.PI / 2 ? Math.PI : 0;
-  interFlip.snapStartAngle = interFlip.angle;
-  interFlip.snapStartTime  = performance.now();
+function slideRelease() {
+  if (!interSlide || interSlide.state !== 'dragging') return;
+  const s = interSlide;
+  const vh = window.innerHeight;
+  const ratioMet = s.dragPx >= vh * COMMIT_DRAG_RATIO;
+  const velMet   = s.velocity >= COMMIT_VEL_PX_MS;
+  s.state = 'releasing';
+  s.springTarget = (ratioMet || velMet) ? vh : 0;
+  s.lastFrameTime = performance.now();
 }
 
-function flipDoSwap() {
-  if (!interFlip || interFlip.swapped) return;
-  interFlip.swapped = true;
-  const { fromIdx, toIdx } = interFlip;
-  wrapper.style.transform = `translateY(${-toIdx * 100}vh)`;
+function slideDoSwap() {
+  if (!interSlide || interSlide.swapped) return;
+  interSlide.swapped = true;
+  const { fromIdx, toIdx } = interSlide;
   currentSection = toIdx;
   updatePlatformUI();
   document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === toIdx));
   document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[toIdx]);
-  const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
-  const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
-  if (fromShadow) fromShadow.style.display = 'none';
-  if (toShadow)   toShadow.style.display   = 'block';
   if (fromIdx === 3) {
     s3Parallax.x = 0; s3Parallax.y = 0;
     const p = document.getElementById('portrait-frame');
@@ -1086,132 +1118,164 @@ function flipDoSwap() {
   }
 }
 
-function flipUndoSwap() {
-  if (!interFlip || !interFlip.swapped) return;
-  interFlip.swapped = false;
-  const { fromIdx, toIdx } = interFlip;
-  wrapper.style.transform = `translateY(${-fromIdx * 100}vh)`;
+function slideUndoSwap() {
+  if (!interSlide || !interSlide.swapped) return;
+  interSlide.swapped = false;
+  const { fromIdx } = interSlide;
   currentSection = fromIdx;
   updatePlatformUI();
   document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === fromIdx));
   document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[fromIdx]);
-  const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
-  const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
-  if (fromShadow) fromShadow.style.display = 'block';
-  if (toShadow)   toShadow.style.display   = 'none';
 }
 
-function flipCleanup(finalIdx) {
-  if (!interFlip) return;
-  const { fromIdx, toIdx } = interFlip;
-  if (sections[fromIdx]?.imgMesh) sections[fromIdx].imgMesh.rotation.x = 0;
-  if (sections[toIdx]?.imgMesh)   sections[toIdx].imgMesh.rotation.x   = 0;
-  const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
-  const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
-  if (fromInner) { fromInner.style.transition = ''; fromInner.style.opacity = ''; }
-  if (toInner)   { toInner.style.transition   = ''; toInner.style.opacity   = ''; }
-  // Clear container perspective — idle shadows use flat 2D transforms only
-  const perspContainer = document.getElementById('flip-perspective-container');
-  if (perspContainer) perspContainer.style.perspective = '';
+function slideCleanup(finalIdx) {
+  if (!interSlide) return;
+  const { fromIdx, toIdx } = interSlide;
+  // Reset image meshes
+  [fromIdx, toIdx].forEach(idx => {
+    const m = sections[idx]?.imgMesh;
+    if (m) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
+  });
+  // Reset shadows: only the final section's shadow stays visible (if 0-2)
+  [0, 1, 2].forEach(idx => {
+    const sh = document.getElementById(`cover-${idx}-shadow`);
+    if (!sh) return;
+    sh.style.transform = '';
+    sh.style.display = (idx === finalIdx) ? 'block' : 'none';
+  });
+  // Reset section opacities
+  document.querySelectorAll('.section-inner').forEach(el => {
+    el.style.transition = '';
+    el.style.opacity = '';
+  });
+  // Snap wrapper to final position
+  wrapper.style.transform = `translateY(${-finalIdx * 100}vh)`;
   document.body.style.backgroundColor = sectionBg[finalIdx];
-  interFlip = null;
+  interSlide = null;
 }
 
-function flipFinalize() {
-  if (!interFlip) return;
-  if (!interFlip.swapped) flipDoSwap();
-  flipCleanup(interFlip.toIdx);
-  navigator.vibrate?.(20);
+function slideFinalize() {
+  if (!interSlide) return;
+  if (!interSlide.swapped) slideDoSwap();
+  slideCleanup(interSlide.toIdx);
+  lockoutUntil = performance.now() + POST_COMMIT_LOCKOUT_MS;
+  navigator.vibrate?.(15);
 }
 
-function flipCancel() {
-  if (!interFlip) return;
-  if (interFlip.swapped) flipUndoSwap();
-  flipCleanup(interFlip.fromIdx);
+function slideCancelDone() {
+  if (!interSlide) return;
+  if (interSlide.swapped) slideUndoSwap();
+  slideCleanup(interSlide.fromIdx);
 }
 
-function updateFlipFrame(t, now) {
-  const f = interFlip;
+function updateSlideFrame(t, now) {
+  const s  = interSlide;
+  const vh = window.innerHeight;
+  const dtMs = Math.min(40, now - s.lastFrameTime);
+  s.lastFrameTime = now;
+  const dt = dtMs / 1000;
 
-  // Advance snap animation
-  if (f.snapping) {
-    const SNAP_MS = 300;
-    const raw  = Math.min((now - f.snapStartTime) / SNAP_MS, 1);
-    const ease = 1 - Math.pow(1 - raw, 3); // ease-out cubic
-    f.angle = f.snapStartAngle + (f.snapTarget - f.snapStartAngle) * ease;
-    if (raw >= 1) {
-      f.angle = f.snapTarget;
-      if (f.snapTarget >= Math.PI - 0.001) { flipFinalize(); return; }
-      else                                  { flipCancel();   return; }
+  // Spring integration during release
+  if (s.state === 'releasing') {
+    // velocity is in px/ms; convert to px/s for spring math, then back
+    let vPxS = s.velocity * 1000;
+    const accel = -SPRING_STIFF * (s.dragPx - s.springTarget) - SPRING_DAMP * vPxS;
+    vPxS += accel * dt;
+    s.velocity = vPxS / 1000;
+    s.dragPx  += vPxS * dt;
+    if (Math.abs(s.dragPx - s.springTarget) < 0.5 && Math.abs(vPxS) < 8) {
+      s.dragPx = s.springTarget;
+      if (s.springTarget > 0) { slideFinalize();   return; }
+      else                     { slideCancelDone(); return; }
     }
   }
 
-  // Background color lerp
+  // Mid-point logical swap (dots, platform UI, portrait)
+  if (!s.swapped && s.dragPx >= vh / 2) slideDoSwap();
+  if ( s.swapped && s.dragPx <  vh / 2) slideUndoSwap();
+
+  // Wrapper translate — slides whole HTML stack
+  const offsetVh = (s.fromIdx + (s.dragPx / vh) * s.direction) * 100;
+  wrapper.style.transform = `translateY(${-offsetVh}vh)`;
+
+  // Background color spring (independent, gentler)
+  const bgTarget = Math.max(0, Math.min(1, s.dragPx / vh));
+  const bgAccel  = -BG_SPRING_STIFF * (s.bgLerp - bgTarget) - BG_SPRING_DAMP * s.bgVel;
+  s.bgVel  += bgAccel * dt;
+  s.bgLerp += s.bgVel * dt;
   document.body.style.backgroundColor =
-    lerpColor(getBgRgb(f.fromIdx), getBgRgb(f.toIdx), Math.pow(f.angle / Math.PI, 0.25));
+    lerpColor(getBgRgb(s.fromIdx), getBgRgb(s.toIdx), Math.max(0, Math.min(1, s.bgLerp)));
 
-  // Bidirectional mid-point wrapper swap
-  if (!f.swapped && f.angle >= Math.PI / 2) flipDoSwap();
-  if ( f.swapped && f.angle <  Math.PI / 2) flipUndoSwap();
+  // Text opacity stagger — from fades out faster than to fades in (subtle layering)
+  const p = Math.max(0, Math.min(1, s.dragPx / vh));
+  const fromInner = document.querySelector(`#section-${s.fromIdx} .section-inner`);
+  const toInner   = document.querySelector(`#section-${s.toIdx} .section-inner`);
+  const fromOp = 1 - Math.max(0, Math.min(1, (p - 0.05) / 0.45));
+  const toOp   = Math.max(0, Math.min(1, (p - 0.45) / 0.45));
+  if (fromInner) fromInner.style.opacity = fromOp.toFixed(3);
+  if (toInner)   toInner.style.opacity   = toOp.toFixed(3);
 
-  // Text opacity: FROM fades out in first half, TO fades in in second half
-  const p = f.angle / Math.PI;
-  const fromInner = document.querySelector(`#section-${f.fromIdx} .section-inner`);
-  const toInner   = document.querySelector(`#section-${f.toIdx} .section-inner`);
-  if (fromInner) fromInner.style.opacity = Math.max(0, 1 - p * 2).toFixed(3);
-  if (toInner)   toInner.style.opacity   = Math.max(0, (p - 0.5) * 2).toFixed(3);
+  // Bob attenuation — both images calm down during slide, full again at endpoints
+  const fromAtten = Math.max(0, 1 - p);
+  const toAtten   = Math.max(0, p);
 
-  // flip progress 0→1 used to lerp bob-tilt toward 0 so image lands flat
-  const flipProgress = f.angle / Math.PI;
-
-  // Bob vertical offset in CSS pixels (follows Three.js imgMesh.position.y)
-  const bobPx = (0.18 + Math.sin(t * 0.6) * 0.08) * (window.innerHeight / worldDims().h);
-
-  // Tilt lerps from its current bob value to 0 as the flip completes
-  const tiltDeg = (Math.sin(t * 0.4) * 0.03 * (1 - flipProgress) * 180 / Math.PI).toFixed(3);
-
-  // Perspective on the container → VP at screen center (50% 50% of full-viewport div).
-  // Shadows stay at left:50% top:50% (CSS); only transform changes each frame.
-  const persp = ((window.innerHeight / 2) / Math.tan(25 * Math.PI / 180)).toFixed(0);
-  const perspContainer = document.getElementById('flip-perspective-container');
-  if (perspContainer) perspContainer.style.perspective = `${persp}px`;
-
-  function applyShadowFlip(idx, flipAngle) {
-    const shadowEl = document.getElementById(`cover-${idx}-shadow`);
-    if (!shadowEl) return;
-    const deg = (flipAngle * 180 / Math.PI).toFixed(2);
-    // translate centers the element and applies bob offset; no inline perspective needed
-    shadowEl.style.transform =
-      `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${-tiltDeg}deg) rotateX(${-deg}deg)`;
+  // Shadows follow each section in screen px
+  const d = worldDims();
+  const pxPerWorld = window.innerHeight / d.h;
+  function applyShadow(idx, screenOffsetPx, atten) {
+    if (idx > 2) return;
+    const sh = document.getElementById(`cover-${idx}-shadow`);
+    if (!sh) return;
+    const bobPx = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerWorld * atten;
+    sh.style.transform =
+      `translate(-50%, calc(-50% + ${(screenOffsetPx - bobPx).toFixed(1)}px))`;
   }
+  const fromScreenOffset = -s.dragPx * s.direction;
+  const toScreenOffset   = (vh - s.dragPx) * s.direction;
+  applyShadow(s.fromIdx, fromScreenOffset, fromAtten);
+  applyShadow(s.toIdx,   toScreenOffset,   toAtten);
 
+  // Three.js: render both scenes with camera y-offset.
+  // Camera convention: camera.y -= worldOffset shifts mesh DOWN visually.
+  // Mesh should appear shifted by `screenOffsetPx` (CSS +y down).
+  // → camera.y_world = -screenOffsetPx * (worldPerPx) ? Verified: camera up makes mesh go down.
+  // To shift mesh DOWN by Δpx (screenOffset positive), camera.y goes UP by Δworld.
+  // worldPerPx = d.h / vh. So camera.y = screenOffsetPx * (d.h / vh).
+  const worldPerPx = d.h / window.innerHeight;
+  const camOrigY = camera.position.y;
+
+  renderer.autoClear = true;
   renderer.clear();
-  if (f.angle < Math.PI / 2) {
-    const s = sections[f.fromIdx];
-    if (s) {
-      s.update(t);
-      const flipAngle = f.angle * f.direction;
-      if (s.imgMesh) {
-        s.imgMesh.rotation.x = flipAngle;
-        // Lerp tilt to 0 so image lands flat — matches shadow's tiltDeg fade
-        s.imgMesh.rotation.z *= (1 - flipProgress);
-      }
-      applyShadowFlip(f.fromIdx, flipAngle);
-      renderer.render(s.scene, camera);
+
+  const sFrom = sections[s.fromIdx];
+  if (sFrom) {
+    sFrom.update(t);
+    if (sFrom.imgMesh) {
+      sFrom.imgMesh.position.y *= fromAtten;
+      sFrom.imgMesh.rotation.z *= fromAtten;
     }
-  } else {
-    const s = sections[f.toIdx];
-    if (s) {
-      s.update(t);
-      const flipAngle = -(Math.PI - f.angle) * f.direction;
-      if (s.imgMesh) {
-        s.imgMesh.rotation.x = flipAngle;
-        s.imgMesh.rotation.z *= (1 - flipProgress);
-      }
-      applyShadowFlip(f.toIdx, flipAngle);
-      renderer.render(s.scene, camera);
-    }
+    camera.position.y = camOrigY + fromScreenOffset * worldPerPx;
+    camera.updateMatrixWorld();
+    renderer.render(sFrom.scene, camera);
   }
+
+  renderer.autoClear = false;
+  const sTo = sections[s.toIdx];
+  if (sTo) {
+    sTo.update(t);
+    if (sTo.imgMesh) {
+      sTo.imgMesh.position.y *= toAtten;
+      sTo.imgMesh.rotation.z *= toAtten;
+    }
+    camera.position.y = camOrigY + toScreenOffset * worldPerPx;
+    camera.updateMatrixWorld();
+    renderer.render(sTo.scene, camera);
+  }
+
+  // Restore camera + autoClear for next frame
+  camera.position.y = camOrigY;
+  camera.updateMatrixWorld();
+  renderer.autoClear = true;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1223,8 +1287,8 @@ function animate(now) {
   if (!renderer) return;
   const t = now * 0.001;
 
-  if (interFlip) {
-    updateFlipFrame(t, now);
+  if (interSlide) {
+    updateSlideFrame(t, now);
   } else {
     renderer.clear();
     const s = sections[currentSection];
@@ -1250,94 +1314,112 @@ function runTaglineReveal() {
 // ═══════════════════════════════════════════════════════════
 
 function navigateTo(fromIdx, toIdx, direction) {
-  if (interFlip) return;
-  flipSetup(fromIdx, toIdx, direction);
-  interFlip.snapping       = true;
-  interFlip.snapTarget     = Math.PI;
-  interFlip.snapStartAngle = 0;
-  interFlip.snapStartTime  = performance.now();
+  if (interSlide) return;
+  slideSetup(fromIdx, toIdx, direction);
+  // Programmatic: skip drag, animate spring straight to commit
+  interSlide.state = 'releasing';
+  interSlide.springTarget = window.innerHeight;
+  // Give it a small initial velocity so the spring "kicks off" instead of starting at rest
+  interSlide.velocity = 1.2; // px/ms ≈ momentum of a deliberate flick
+  interSlide.lastFrameTime = performance.now();
 }
 
 // ═══════════════════════════════════════════════════════════
-// INPUT SYSTEM — interactive flip
+// INPUT SYSTEM — interactive slide
 // ═══════════════════════════════════════════════════════════
 
 window.addEventListener('wheel', e => {
   e.preventDefault();
-  const direction = e.deltaY > 0 ? 1 : -1;
+  const now = performance.now();
 
-  if (!interFlip) {
+  // Anti-skip: post-commit lockout (ignores trackpad inertia tail)
+  if (now < lockoutUntil) { wheelLastEventTime = now; return; }
+
+  // Anti-skip: idle gate — after lockout ends, require a brief silence
+  // before accepting fresh input (tail momentum has stopped).
+  if (wheelLastEventTime && (now - wheelLastEventTime) < WHEEL_IDLE_GATE_MS && !interSlide) {
+    wheelLastEventTime = now;
+    return;
+  }
+  wheelLastEventTime = now;
+
+  let dy = e.deltaY;
+  if      (e.deltaMode === 1) dy *= 20;
+  else if (e.deltaMode === 2) dy *= window.innerHeight;
+  const direction = dy > 0 ? 1 : -1;
+
+  if (!interSlide) {
     const next = currentSection + direction;
     if (next < 0 || next >= SECTION_COUNT) return;
-    flipSetup(currentSection, next, direction);
+    slideSetup(currentSection, next, direction);
   }
 
-  if (interFlip && !interFlip.snapping) {
-    // Normalize deltaMode: pixel / line / page
-    let dy = e.deltaY;
-    if (e.deltaMode === 1) dy *= 20;
-    else if (e.deltaMode === 2) dy *= window.innerHeight;
-
-    // Positive dy in flip direction advances; reversed dy retreats
-    const da = (dy * interFlip.direction) / FLIP_DRAG_PX * Math.PI;
-    flipAddAngle(da);
-
-    // Reversed back to start — cancel immediately
-    if (interFlip.angle <= 0) { flipCancel(); return; }
+  if (interSlide && interSlide.state === 'dragging') {
+    // Movement toward destination is positive
+    const deltaPx = dy * interSlide.direction;
+    slideAddInput(deltaPx);
+    if (interSlide.dragPx <= 0 && interSlide.velocity <= 0) {
+      // Reversed past origin — cancel immediately
+      slideCancelDone();
+      return;
+    }
   }
 
+  // After input idles, release the spring
   clearTimeout(wheelIdleTimer);
   wheelIdleTimer = setTimeout(() => {
-    if (interFlip && !interFlip.snapping) flipBeginSnap();
-  }, 120);
+    if (interSlide && interSlide.state === 'dragging') slideRelease();
+  }, WHEEL_RELEASE_IDLE_MS);
 }, { passive: false });
 
 window.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown' || e.key === 'PageDown') {
     e.preventDefault();
-    if (!interFlip) {
+    if (!interSlide) {
       const next = currentSection + 1;
       if (next < SECTION_COUNT) navigateTo(currentSection, next, 1);
     }
   }
   if (e.key === 'ArrowUp' || e.key === 'PageUp') {
     e.preventDefault();
-    if (!interFlip) {
+    if (!interSlide) {
       const next = currentSection - 1;
       if (next >= 0) navigateTo(currentSection, next, -1);
     }
   }
 });
 
-let touchStartY = 0, touchLastY = 0;
+let touchLastY = 0;
 window.addEventListener('touchstart', e => {
-  touchStartY = e.touches[0].clientY;
-  touchLastY  = touchStartY;
+  touchLastY = e.touches[0].clientY;
 }, { passive: true });
 
 window.addEventListener('touchmove', e => {
   e.preventDefault();
   const y     = e.touches[0].clientY;
-  const delta = touchLastY - y; // positive = swipe up = scroll forward
+  const delta = touchLastY - y; // positive = swipe up = forward
   touchLastY  = y;
   if (Math.abs(delta) < 1) return;
 
-  if (!interFlip) {
+  if (!interSlide) {
     const direction = delta > 0 ? 1 : -1;
     const next = currentSection + direction;
     if (next < 0 || next >= SECTION_COUNT) return;
-    flipSetup(currentSection, next, direction);
+    slideSetup(currentSection, next, direction);
   }
 
-  if (interFlip && !interFlip.snapping) {
-    const da = (delta * interFlip.direction) / FLIP_DRAG_PX * Math.PI;
-    flipAddAngle(da);
-    if (interFlip.angle <= 0) { flipCancel(); return; }
+  if (interSlide && interSlide.state === 'dragging') {
+    const deltaPx = delta * interSlide.direction;
+    slideAddInput(deltaPx);
+    if (interSlide.dragPx <= 0 && interSlide.velocity <= 0) {
+      slideCancelDone();
+      return;
+    }
   }
 }, { passive: false });
 
 window.addEventListener('touchend', () => {
-  if (interFlip && !interFlip.snapping) flipBeginSnap();
+  if (interSlide && interSlide.state === 'dragging') slideRelease();
 }, { passive: true });
 
 // ═══════════════════════════════════════════════════════════
@@ -1363,7 +1445,7 @@ function initDots() {
   document.querySelectorAll('.dot').forEach(dot => {
     dot.addEventListener('click', () => {
       const idx = parseInt(dot.dataset.idx, 10);
-      if (idx !== currentSection && !interFlip) {
+      if (idx !== currentSection && !interSlide) {
         navigateTo(currentSection, idx, idx > currentSection ? 1 : -1);
       }
     });
