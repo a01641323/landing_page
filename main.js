@@ -1137,10 +1137,11 @@ function slideCleanup(finalIdx) {
     if (m) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
   });
   // Reset shadows: only the final section's shadow stays visible (if 0-2)
+  // Don't clear transform — leave it at the last applyShadow value so the next
+  // idle update() can take over smoothly without a one-frame snap.
   [0, 1, 2].forEach(idx => {
     const sh = document.getElementById(`cover-${idx}-shadow`);
     if (!sh) return;
-    sh.style.transform = '';
     sh.style.display = (idx === finalIdx) ? 'block' : 'none';
   });
   // Reset section opacities
@@ -1219,21 +1220,8 @@ function updateSlideFrame(t, now) {
   const fromAtten = Math.max(0, 1 - p);
   const toAtten   = Math.max(0, p);
 
-  // Shadows follow each section in screen px
-  const d = worldDims();
-  const pxPerWorld = window.innerHeight / d.h;
-  function applyShadow(idx, screenOffsetPx, atten) {
-    if (idx > 2) return;
-    const sh = document.getElementById(`cover-${idx}-shadow`);
-    if (!sh) return;
-    const bobPx = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerWorld * atten;
-    sh.style.transform =
-      `translate(-50%, calc(-50% + ${(screenOffsetPx - bobPx).toFixed(1)}px))`;
-  }
   const fromScreenOffset = -s.dragPx * s.direction;
   const toScreenOffset   = (vh - s.dragPx) * s.direction;
-  applyShadow(s.fromIdx, fromScreenOffset, fromAtten);
-  applyShadow(s.toIdx,   toScreenOffset,   toAtten);
 
   // Three.js: render both scenes with camera y-offset.
   // Camera convention: camera.y -= worldOffset shifts mesh DOWN visually.
@@ -1241,6 +1229,8 @@ function updateSlideFrame(t, now) {
   // → camera.y_world = -screenOffsetPx * (worldPerPx) ? Verified: camera up makes mesh go down.
   // To shift mesh DOWN by Δpx (screenOffset positive), camera.y goes UP by Δworld.
   // worldPerPx = d.h / vh. So camera.y = screenOffsetPx * (d.h / vh).
+  const d = worldDims();
+  const pxPerWorld = window.innerHeight / d.h;
   const worldPerPx = d.h / window.innerHeight;
   const camOrigY = camera.position.y;
 
@@ -1276,6 +1266,20 @@ function updateSlideFrame(t, now) {
   camera.position.y = camOrigY;
   camera.updateMatrixWorld();
   renderer.autoClear = true;
+
+  // Shadows: applied AFTER update() calls so we overwrite the idle transform.
+  // Include attenuated tilt so the shadow stays visually locked to the image.
+  function applyShadow(idx, screenOffsetPx, atten) {
+    if (idx > 2) return;
+    const sh = document.getElementById(`cover-${idx}-shadow`);
+    if (!sh) return;
+    const bobPx   = (0.18 + Math.sin(t * 0.6) * 0.08) * pxPerWorld * atten;
+    const tiltDeg = Math.sin(t * 0.4) * 0.03 * (180 / Math.PI) * atten;
+    sh.style.transform =
+      `translate(-50%, calc(-50% + ${(screenOffsetPx - bobPx).toFixed(1)}px)) rotate(${(-tiltDeg).toFixed(3)}deg)`;
+  }
+  applyShadow(s.fromIdx, fromScreenOffset, fromAtten);
+  applyShadow(s.toIdx,   toScreenOffset,   toAtten);
 }
 
 // ═══════════════════════════════════════════════════════════
