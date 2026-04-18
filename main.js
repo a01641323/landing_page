@@ -15,11 +15,40 @@ const PERF = { reduced: isMobile || (navigator.hardwareConcurrency || 8) <= 4 };
 // ═══════════════════════════════════════════════════════════
 
 const SECTION_COUNT = 4;
-const DEBOUNCE_MS   = 750;
+const FLIP_DRAG_PX  = 280; // accumulated px for a full 180° flip
 
-let currentSection  = 0;
-let isTransitioning = false;
-let lastScrollTime  = 0;
+let currentSection = 0;
+
+// Active interactive flip — null when idle
+let interFlip = null;
+/*
+  interFlip = {
+    fromIdx, toIdx, direction,   // direction: +1 fwd / -1 back
+    angle,                       // 0 → Math.PI
+    snapping,                    // bool: auto-snap running
+    snapTarget,                  // 0 (cancel) or Math.PI (commit)
+    snapStartAngle,
+    snapStartTime,
+    swapped,                     // bool: wrapper already at toIdx
+  }
+*/
+
+let wheelIdleTimer = null;
+
+function hexRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255];
+}
+function lerpColor(a, b, t) {
+  return `rgb(${Math.round((a[0] + (b[0]-a[0])*t)*255)},` +
+             `${Math.round((a[1] + (b[1]-a[1])*t)*255)},` +
+             `${Math.round((a[2] + (b[2]-a[2])*t)*255)})`;
+}
+const _bgRgb = {};
+function getBgRgb(idx) {
+  if (!_bgRgb[idx]) _bgRgb[idx] = hexRgb(sectionBg[idx]);
+  return _bgRgb[idx];
+}
 
 const wrapper = document.getElementById('sections-wrapper');
 
@@ -94,10 +123,10 @@ const sectionAlbums = ['elyella', 'residuosdeunavoz', 'principeturquesa', 'matia
 // ═══════════════════════════════════════════════════════════
 
 const platforms = [
-  { id: 'spotify',      icon: 'icons/spotify.png',      label: 'Spotify' },
-  { id: 'applemusic',   icon: 'icons/applemusic.png',   label: 'Apple Music' },
-  { id: 'amazon',       icon: 'icons/amazonmusic.png',  label: 'Amazon Music' },
-  { id: 'youtubemusic', icon: 'icons/youtubemusic.png', label: 'YouTube Music' },
+  { id: 'spotify',      icon: 'icons/spotify.webp',      label: 'Spotify' },
+  { id: 'applemusic',   icon: 'icons/applemusic.webp',   label: 'Apple Music' },
+  { id: 'amazon',       icon: 'icons/amazonmusic.webp',  label: 'Amazon Music' },
+  { id: 'youtubemusic', icon: 'icons/youtubemusic.webp', label: 'YouTube Music' },
 ];
 
 const sectionAccents = ['#f39c12', '#48c9b0', '#00d4d4', '#b0b8c1'];
@@ -433,7 +462,7 @@ function worldDims() {
   return { w: h * camera.aspect, h };
 }
 
-function imgSize(idx) {
+function imgSize(_idx) {
   const d = worldDims();
   const mob = window.innerWidth < 768;
   return mob ? 0.72 * d.w : Math.min(0.55 * d.h, 0.55 * d.w);
@@ -901,11 +930,10 @@ function buildSection3() {
 
   // ── Portrait reference ────────────────────────────────────
   const portrait = document.getElementById('portrait-frame');
-  let s3EnteredAt = 0;
 
   sections[3] = {
     scene, imgMesh: null,
-    onEnter() { s3EnteredAt = Date.now(); },
+    onEnter() {},
     update(t) {
       // Stars drift — very slowly (0.5× multiplier)
       const arr = geo.attributes.position.array;
@@ -950,7 +978,7 @@ function initThreeJS() {
     camera.position.z = 5;
     scaleTextBlocks();
 
-    const srcs     = ['icons/elyella.png', 'icons/residuosdeunavoz.png', 'icons/principeturquesa.png'];
+    const srcs     = ['icons/elyella.webp', 'icons/residuosdeunavoz.webp', 'icons/principeturquesa.webp'];
     const builders = [buildSection0, buildSection1, buildSection2];
     srcs.forEach((src, i) => textureLoader.load(src, tex => builders[i](tex)));
     buildSection3();
@@ -1003,6 +1031,190 @@ function onResize() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// INTERACTIVE FLIP SYSTEM
+// ═══════════════════════════════════════════════════════════
+
+function flipSetup(fromIdx, toIdx, direction) {
+  interFlip = {
+    fromIdx, toIdx, direction,
+    angle: 0, snapping: false,
+    snapTarget: 0, snapStartAngle: 0, snapStartTime: 0,
+    swapped: false,
+  };
+  const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
+  const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
+  if (fromInner) { fromInner.style.transition = 'none'; fromInner.style.opacity = '1'; }
+  if (toInner)   { toInner.style.transition   = 'none'; toInner.style.opacity   = '0'; }
+}
+
+function flipAddAngle(da) {
+  if (!interFlip || interFlip.snapping) return;
+  interFlip.angle = Math.max(0, Math.min(Math.PI, interFlip.angle + da));
+}
+
+function flipBeginSnap() {
+  if (!interFlip || interFlip.snapping) return;
+  interFlip.snapping       = true;
+  interFlip.snapTarget     = interFlip.angle >= Math.PI / 2 ? Math.PI : 0;
+  interFlip.snapStartAngle = interFlip.angle;
+  interFlip.snapStartTime  = performance.now();
+}
+
+function flipDoSwap() {
+  if (!interFlip || interFlip.swapped) return;
+  interFlip.swapped = true;
+  const { fromIdx, toIdx } = interFlip;
+  wrapper.style.transform = `translateY(${-toIdx * 100}vh)`;
+  currentSection = toIdx;
+  updatePlatformUI();
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === toIdx));
+  document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[toIdx]);
+  const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
+  const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
+  if (fromShadow) fromShadow.style.display = 'none';
+  if (toShadow)   toShadow.style.display   = 'block';
+  if (fromIdx === 3) {
+    s3Parallax.x = 0; s3Parallax.y = 0;
+    const p = document.getElementById('portrait-frame');
+    if (p) { p.style.transform = ''; p.classList.remove('portrait-entering'); }
+  }
+  if (toIdx === 3) {
+    const p = document.getElementById('portrait-frame');
+    if (p) { p.classList.remove('portrait-entering'); void p.offsetWidth; p.classList.add('portrait-entering'); }
+    sections[3]?.onEnter();
+    runTaglineReveal();
+  }
+}
+
+function flipUndoSwap() {
+  if (!interFlip || !interFlip.swapped) return;
+  interFlip.swapped = false;
+  const { fromIdx, toIdx } = interFlip;
+  wrapper.style.transform = `translateY(${-fromIdx * 100}vh)`;
+  currentSection = fromIdx;
+  updatePlatformUI();
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === fromIdx));
+  document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[fromIdx]);
+  const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
+  const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
+  if (fromShadow) fromShadow.style.display = 'block';
+  if (toShadow)   toShadow.style.display   = 'none';
+}
+
+function flipCleanup(finalIdx) {
+  if (!interFlip) return;
+  const { fromIdx, toIdx } = interFlip;
+  if (sections[fromIdx]?.imgMesh) sections[fromIdx].imgMesh.rotation.x = 0;
+  if (sections[toIdx]?.imgMesh)   sections[toIdx].imgMesh.rotation.x   = 0;
+  const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
+  const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
+  if (fromInner) { fromInner.style.transition = ''; fromInner.style.opacity = ''; }
+  if (toInner)   { toInner.style.transition   = ''; toInner.style.opacity   = ''; }
+  // Clear container perspective — idle shadows use flat 2D transforms only
+  const perspContainer = document.getElementById('flip-perspective-container');
+  if (perspContainer) perspContainer.style.perspective = '';
+  document.body.style.backgroundColor = sectionBg[finalIdx];
+  interFlip = null;
+}
+
+function flipFinalize() {
+  if (!interFlip) return;
+  if (!interFlip.swapped) flipDoSwap();
+  flipCleanup(interFlip.toIdx);
+  navigator.vibrate?.(20);
+}
+
+function flipCancel() {
+  if (!interFlip) return;
+  if (interFlip.swapped) flipUndoSwap();
+  flipCleanup(interFlip.fromIdx);
+}
+
+function updateFlipFrame(t, now) {
+  const f = interFlip;
+
+  // Advance snap animation
+  if (f.snapping) {
+    const SNAP_MS = 300;
+    const raw  = Math.min((now - f.snapStartTime) / SNAP_MS, 1);
+    const ease = 1 - Math.pow(1 - raw, 3); // ease-out cubic
+    f.angle = f.snapStartAngle + (f.snapTarget - f.snapStartAngle) * ease;
+    if (raw >= 1) {
+      f.angle = f.snapTarget;
+      if (f.snapTarget >= Math.PI - 0.001) { flipFinalize(); return; }
+      else                                  { flipCancel();   return; }
+    }
+  }
+
+  // Background color lerp
+  document.body.style.backgroundColor =
+    lerpColor(getBgRgb(f.fromIdx), getBgRgb(f.toIdx), Math.pow(f.angle / Math.PI, 0.25));
+
+  // Bidirectional mid-point wrapper swap
+  if (!f.swapped && f.angle >= Math.PI / 2) flipDoSwap();
+  if ( f.swapped && f.angle <  Math.PI / 2) flipUndoSwap();
+
+  // Text opacity: FROM fades out in first half, TO fades in in second half
+  const p = f.angle / Math.PI;
+  const fromInner = document.querySelector(`#section-${f.fromIdx} .section-inner`);
+  const toInner   = document.querySelector(`#section-${f.toIdx} .section-inner`);
+  if (fromInner) fromInner.style.opacity = Math.max(0, 1 - p * 2).toFixed(3);
+  if (toInner)   toInner.style.opacity   = Math.max(0, (p - 0.5) * 2).toFixed(3);
+
+  // flip progress 0→1 used to lerp bob-tilt toward 0 so image lands flat
+  const flipProgress = f.angle / Math.PI;
+
+  // Bob vertical offset in CSS pixels (follows Three.js imgMesh.position.y)
+  const bobPx = (0.18 + Math.sin(t * 0.6) * 0.08) * (window.innerHeight / worldDims().h);
+
+  // Tilt lerps from its current bob value to 0 as the flip completes
+  const tiltDeg = (Math.sin(t * 0.4) * 0.03 * (1 - flipProgress) * 180 / Math.PI).toFixed(3);
+
+  // Perspective on the container → VP at screen center (50% 50% of full-viewport div).
+  // Shadows stay at left:50% top:50% (CSS); only transform changes each frame.
+  const persp = ((window.innerHeight / 2) / Math.tan(25 * Math.PI / 180)).toFixed(0);
+  const perspContainer = document.getElementById('flip-perspective-container');
+  if (perspContainer) perspContainer.style.perspective = `${persp}px`;
+
+  function applyShadowFlip(idx, flipAngle) {
+    const shadowEl = document.getElementById(`cover-${idx}-shadow`);
+    if (!shadowEl) return;
+    const deg = (flipAngle * 180 / Math.PI).toFixed(2);
+    // translate centers the element and applies bob offset; no inline perspective needed
+    shadowEl.style.transform =
+      `translate(-50%, calc(-50% - ${bobPx.toFixed(1)}px)) rotate(${-tiltDeg}deg) rotateX(${-deg}deg)`;
+  }
+
+  renderer.clear();
+  if (f.angle < Math.PI / 2) {
+    const s = sections[f.fromIdx];
+    if (s) {
+      s.update(t);
+      const flipAngle = f.angle * f.direction;
+      if (s.imgMesh) {
+        s.imgMesh.rotation.x = flipAngle;
+        // Lerp tilt to 0 so image lands flat — matches shadow's tiltDeg fade
+        s.imgMesh.rotation.z *= (1 - flipProgress);
+      }
+      applyShadowFlip(f.fromIdx, flipAngle);
+      renderer.render(s.scene, camera);
+    }
+  } else {
+    const s = sections[f.toIdx];
+    if (s) {
+      s.update(t);
+      const flipAngle = -(Math.PI - f.angle) * f.direction;
+      if (s.imgMesh) {
+        s.imgMesh.rotation.x = flipAngle;
+        s.imgMesh.rotation.z *= (1 - flipProgress);
+      }
+      applyShadowFlip(f.toIdx, flipAngle);
+      renderer.render(s.scene, camera);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // ANIMATION LOOP
 // ═══════════════════════════════════════════════════════════
 
@@ -1010,16 +1222,18 @@ function animate(now) {
   rafId = requestAnimationFrame(animate);
   if (!renderer) return;
   const t = now * 0.001;
-  renderer.clear();
-  const s = sections[currentSection];
-  if (s) {
-    s.update(t);
-    renderer.render(s.scene, camera);
+
+  if (interFlip) {
+    updateFlipFrame(t, now);
+  } else {
+    renderer.clear();
+    const s = sections[currentSection];
+    if (s) { s.update(t); renderer.render(s.scene, camera); }
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// CSS TILT TRANSITION — Star Wars style
+// TAGLINE REVEAL
 // ═══════════════════════════════════════════════════════════
 
 function runTaglineReveal() {
@@ -1031,132 +1245,99 @@ function runTaglineReveal() {
   ).join(' ');
 }
 
-function playTiltTransition(fromIdx, toIdx, direction) {
-  if (isTransitioning) return;
-  isTransitioning = true;
-  lastScrollTime  = Date.now();
-  navigator.vibrate?.(35);
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION (discrete: dots, keyboard)
+// ═══════════════════════════════════════════════════════════
 
-  const fromInner = document.querySelector(`#section-${fromIdx} .section-inner`);
-  const toInner   = document.querySelector(`#section-${toIdx} .section-inner`);
-  const rotX      = direction > 0 ? 25 : -25;
-
-  // Tilt current section out
-  fromInner.style.transition = 'transform 450ms ease-in, opacity 450ms ease-in';
-  fromInner.style.transform  = `perspective(800px) rotateX(${rotX}deg) translateZ(-60px)`;
-  fromInner.style.opacity    = '0';
-
-  // Crossfade body background
-  document.body.style.backgroundColor = sectionBg[toIdx];
-
-  setTimeout(() => {
-    // Snap wrapper to new section (instant)
-    wrapper.style.transform = `translateY(${-toIdx * 100}vh)`;
-    currentSection = toIdx;
-    updatePlatformUI();
-
-    // Update section dots
-    document.querySelectorAll('.dot').forEach((d, i) => {
-      d.classList.toggle('active', i === toIdx);
-    });
-    document.getElementById('section-dots').style.setProperty('--accent', sectionAccents[toIdx]);
-
-    // Swap active shadow
-    const fromShadow = document.getElementById(`cover-${fromIdx}-shadow`);
-    const toShadow   = document.getElementById(`cover-${toIdx}-shadow`);
-    if (fromShadow) fromShadow.style.display = 'none';
-    if (toShadow)   toShadow.style.display   = 'block';
-
-    // Reset parallax when leaving section 3
-    if (fromIdx === 3) {
-      s3Parallax.x = 0;
-      s3Parallax.y = 0;
-      const portrait = document.getElementById('portrait-frame');
-      if (portrait) {
-        portrait.style.transform = '';
-        portrait.classList.remove('portrait-entering');
-      }
-    }
-
-    // Section 3 enter: portrait animation + tagline word reveal
-    if (toIdx === 3) {
-      const portrait = document.getElementById('portrait-frame');
-      if (portrait) {
-        portrait.classList.remove('portrait-entering');
-        void portrait.offsetWidth; // force reflow to restart animation
-        portrait.classList.add('portrait-entering');
-      }
-      sections[3]?.onEnter();
-      runTaglineReveal();
-    }
-
-    // Reset from section (now off-screen)
-    fromInner.style.transition = 'none';
-    fromInner.style.transform  = '';
-    fromInner.style.opacity    = '';
-
-    // Set new section to start state
-    toInner.style.transition = 'none';
-    toInner.style.transform  = `perspective(800px) rotateX(${-rotX}deg) translateZ(-60px)`;
-    toInner.style.opacity    = '0';
-
-    // Tilt new section into place
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      toInner.style.transition = 'transform 450ms ease-out, opacity 450ms ease-out';
-      toInner.style.transform  = 'perspective(800px) rotateX(0deg) translateZ(0px)';
-      toInner.style.opacity    = '1';
-    }));
-
-    setTimeout(() => {
-      toInner.style.transition = '';
-      toInner.style.transform  = '';
-      toInner.style.opacity    = '';
-      isTransitioning = false;
-    }, 460);
-  }, 225);
+function navigateTo(fromIdx, toIdx, direction) {
+  if (interFlip) return;
+  flipSetup(fromIdx, toIdx, direction);
+  interFlip.snapping       = true;
+  interFlip.snapTarget     = Math.PI;
+  interFlip.snapStartAngle = 0;
+  interFlip.snapStartTime  = performance.now();
 }
 
 // ═══════════════════════════════════════════════════════════
-// SCROLL SYSTEM
+// INPUT SYSTEM — interactive flip
 // ═══════════════════════════════════════════════════════════
 
-function handleScrollIntent(direction) {
-  if (isTransitioning) return;
-  const now = Date.now();
-  if (now - lastScrollTime < DEBOUNCE_MS) return;
-
-  const next = currentSection + (direction > 0 ? 1 : -1);
-  if (next < 0 || next >= SECTION_COUNT) return;
-  playTiltTransition(currentSection, next, direction);
-}
-
-let wheelAccum = 0, wheelResetTimer = null;
 window.addEventListener('wheel', e => {
   e.preventDefault();
-  wheelAccum += e.deltaY;
-  clearTimeout(wheelResetTimer);
-  wheelResetTimer = setTimeout(() => { wheelAccum = 0; }, 500);
-  if (Math.abs(wheelAccum) >= 80) {
-    const dir = wheelAccum;
-    wheelAccum = 0;
-    handleScrollIntent(dir);
+  const direction = e.deltaY > 0 ? 1 : -1;
+
+  if (!interFlip) {
+    const next = currentSection + direction;
+    if (next < 0 || next >= SECTION_COUNT) return;
+    flipSetup(currentSection, next, direction);
   }
+
+  if (interFlip && !interFlip.snapping) {
+    // Normalize deltaMode: pixel / line / page
+    let dy = e.deltaY;
+    if (e.deltaMode === 1) dy *= 20;
+    else if (e.deltaMode === 2) dy *= window.innerHeight;
+
+    // Positive dy in flip direction advances; reversed dy retreats
+    const da = (dy * interFlip.direction) / FLIP_DRAG_PX * Math.PI;
+    flipAddAngle(da);
+
+    // Reversed back to start — cancel immediately
+    if (interFlip.angle <= 0) { flipCancel(); return; }
+  }
+
+  clearTimeout(wheelIdleTimer);
+  wheelIdleTimer = setTimeout(() => {
+    if (interFlip && !interFlip.snapping) flipBeginSnap();
+  }, 120);
 }, { passive: false });
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); handleScrollIntent(1); }
-  if (e.key === 'ArrowUp'   || e.key === 'PageUp')   { e.preventDefault(); handleScrollIntent(-1); }
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+    e.preventDefault();
+    if (!interFlip) {
+      const next = currentSection + 1;
+      if (next < SECTION_COUNT) navigateTo(currentSection, next, 1);
+    }
+  }
+  if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+    e.preventDefault();
+    if (!interFlip) {
+      const next = currentSection - 1;
+      if (next >= 0) navigateTo(currentSection, next, -1);
+    }
+  }
 });
 
-let touchStartY = 0, touchStartTime = 0;
+let touchStartY = 0, touchLastY = 0;
 window.addEventListener('touchstart', e => {
   touchStartY = e.touches[0].clientY;
-  touchStartTime = Date.now();
+  touchLastY  = touchStartY;
 }, { passive: true });
-window.addEventListener('touchend', e => {
-  const delta = touchStartY - e.changedTouches[0].clientY;
-  const velocity = Math.abs(delta) / (Date.now() - touchStartTime);
-  if (Math.abs(delta) > 50 && velocity > 0.25) handleScrollIntent(delta);
+
+window.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const y     = e.touches[0].clientY;
+  const delta = touchLastY - y; // positive = swipe up = scroll forward
+  touchLastY  = y;
+  if (Math.abs(delta) < 1) return;
+
+  if (!interFlip) {
+    const direction = delta > 0 ? 1 : -1;
+    const next = currentSection + direction;
+    if (next < 0 || next >= SECTION_COUNT) return;
+    flipSetup(currentSection, next, direction);
+  }
+
+  if (interFlip && !interFlip.snapping) {
+    const da = (delta * interFlip.direction) / FLIP_DRAG_PX * Math.PI;
+    flipAddAngle(da);
+    if (interFlip.angle <= 0) { flipCancel(); return; }
+  }
+}, { passive: false });
+
+window.addEventListener('touchend', () => {
+  if (interFlip && !interFlip.snapping) flipBeginSnap();
 }, { passive: true });
 
 // ═══════════════════════════════════════════════════════════
@@ -1182,8 +1363,8 @@ function initDots() {
   document.querySelectorAll('.dot').forEach(dot => {
     dot.addEventListener('click', () => {
       const idx = parseInt(dot.dataset.idx, 10);
-      if (idx !== currentSection) {
-        playTiltTransition(currentSection, idx, idx > currentSection ? 1 : -1);
+      if (idx !== currentSection && !interFlip) {
+        navigateTo(currentSection, idx, idx > currentSection ? 1 : -1);
       }
     });
   });

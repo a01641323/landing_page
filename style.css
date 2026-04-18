@@ -221,9 +221,22 @@ body {
 .cover-wrapper::after { display: none; }
 
 /* ============================================================
-   SECTION 0 — DEPTH SHADOW (z-12: above canvas, below HTML wrapper)
-   Transparent box — only the box-shadow is visible, animated by JS
+   DEPTH SHADOW LAYER
+   Container: fixed full-viewport, z-12. perspective set by JS during flip
+   (perspective-origin defaults to 50% 50% = screen center — matches Three.js VP).
+   Shadows: absolute within container, centered at 50%/50% = screen center.
+   JS controls only transform each frame; left/top stay at 50% always.
    ============================================================ */
+#flip-perspective-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 12;
+}
+
 #cover-1-shadow,
 #cover-2-shadow {
   display: none;
@@ -232,7 +245,7 @@ body {
 #cover-0-shadow,
 #cover-1-shadow,
 #cover-2-shadow {
-  position: fixed;
+  position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -240,14 +253,11 @@ body {
   height: 72vw;
   border-radius: 6px;
   background: transparent;
-  z-index: 12;
   pointer-events: none;
-  /* Base shadow — JS overrides blur/offset each frame */
   box-shadow:
     0 20px 40px rgba(0,0,0,0.55),
     0 8px 20px rgba(0,0,0,0.3);
 }
-
 
 @media (min-width: 768px) {
   #cover-0-shadow,

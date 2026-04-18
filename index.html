@@ -13,28 +13,31 @@
   <!-- Shared Three.js canvas — fixed, pointer-events:none, z-index:10 -->
   <canvas id="three-canvas"></canvas>
 
-  <!-- Depth shadows — fixed between canvas (z-10) and wrapper (z-20), animated by JS -->
-  <div id="cover-0-shadow"></div>
-  <div id="cover-1-shadow"></div>
-  <div id="cover-2-shadow"></div>
+  <!-- Perspective anchor: fixed full-viewport, VP at screen center (50% 50%).
+       Children use rotateX() without inline perspective — parent projects them correctly. -->
+  <div id="flip-perspective-container">
+    <div id="cover-0-shadow"></div>
+    <div id="cover-1-shadow"></div>
+    <div id="cover-2-shadow"></div>
+  </div>
   <!-- Bat-Signal beam rendered by Three.js on canvas -->
 
   <!-- Platform switcher — fixed top-right, always visible, z-index:1000 -->
   <div id="platform-switcher-group">
     <div id="platform-switcher" role="button" aria-label="Cambiar plataforma" tabindex="0">
-      <img id="platform-logo" src="icons/spotify.png" alt="Spotify" />
+      <img id="platform-logo" src="icons/spotify.webp" alt="Spotify" />
     </div>
     <div class="platform-satellite" id="sat-0" data-index="0">
-      <img src="icons/spotify.png" alt="Spotify" />
+      <img src="icons/spotify.webp" alt="Spotify" />
     </div>
     <div class="platform-satellite" id="sat-1" data-index="1">
-      <img src="icons/applemusic.png" alt="Apple Music" />
+      <img src="icons/applemusic.webp" alt="Apple Music" />
     </div>
     <div class="platform-satellite" id="sat-2" data-index="2">
-      <img src="icons/amazonmusic.png" alt="Amazon Music" />
+      <img src="icons/amazonmusic.webp" alt="Amazon Music" />
     </div>
     <div class="platform-satellite" id="sat-3" data-index="3">
-      <img src="icons/youtubemusic.png" alt="YouTube Music" />
+      <img src="icons/youtubemusic.webp" alt="YouTube Music" />
     </div>
   </div>
 
@@ -44,7 +47,7 @@
     <!-- Section 0: Él y ella -->
     <section class="section" id="section-0">
       <div class="section-inner">
-        <img class="cover-image" id="cover-0" src="icons/elyella.png" alt="Él y ella" data-section="0" />
+        <img class="cover-image" id="cover-0" src="icons/elyella.webp" alt="Él y ella" data-section="0" />
         <div class="floating-btn btn-circle" id="btn-0-a" data-btn="0"></div>
         <div class="floating-btn btn-circle" id="btn-0-b" data-btn="1"></div>
         <div class="floating-btn btn-circle" id="btn-0-c" data-btn="2"></div>
@@ -55,7 +58,7 @@
     <!-- Section 1: Residuos de una voz -->
     <section class="section" id="section-1">
       <div class="section-inner">
-        <img class="cover-image" id="cover-1" src="icons/residuosdeunavoz.png" alt="Residuos de una voz" data-section="1" />
+        <img class="cover-image" id="cover-1" src="icons/residuosdeunavoz.webp" alt="Residuos de una voz" data-section="1" />
         <p class="text-block" id="text-1">La voz no siempre habla. A veces solo dice cosas. No tiene tiempo. Será visiones o será vestigios. Si la escuchas, ten cuidado porque puede atarte. Y no es que tenga vida propia, pero tampoco es que no la tenga.</p>
       </div>
     </section>
@@ -63,10 +66,10 @@
     <!-- Section 2: Príncipe turquesa -->
     <section class="section" id="section-2">
       <div class="section-inner">
-        <img class="cover-image" id="cover-2" src="icons/principeturquesa.png" alt="Príncipe turquesa" data-section="2" />
-        <img class="floating-btn" id="btn-2-a" data-btn="0" src="icons/corona.png" alt="Corona" />
-        <img class="floating-btn" id="btn-2-b" data-btn="1" src="icons/corona.png" alt="Corona" />
-        <img class="floating-btn" id="btn-2-d" data-btn="3" src="icons/corona.png" alt="Corona" />
+        <img class="cover-image" id="cover-2" src="icons/principeturquesa.webp" alt="Príncipe turquesa" data-section="2" />
+        <img class="floating-btn" id="btn-2-a" data-btn="0" src="icons/corona.webp" alt="Corona" />
+        <img class="floating-btn" id="btn-2-b" data-btn="1" src="icons/corona.webp" alt="Corona" />
+        <img class="floating-btn" id="btn-2-d" data-btn="3" src="icons/corona.webp" alt="Corona" />
         <p class="text-block" id="text-2">En ciertos cuentos, hay quien muere por amor. En otros se cava una tumba y se espera encontrarlo dentro. Puede que la vida sin amar sea aun peor que amar sin vida. Un príncipe está rodeado de lujos y de espadas.</p>
       </div>
     </section>
@@ -75,7 +78,7 @@
     <section class="section" id="section-3">
       <div class="section-inner section-inner-artist">
         <div id="portrait-frame">
-          <img class="cover-image cover-artist" id="cover-3" src="icons/matiashidalgo.png" alt="Matías Hidalgo" data-section="3" />
+          <img class="cover-image cover-artist" id="cover-3" src="icons/matiashidalgo.webp" alt="Matías Hidalgo" data-section="3" />
         </div>
         <div id="portrait-radial-glow"></div>
         <div class="artist-text" id="text-3">
